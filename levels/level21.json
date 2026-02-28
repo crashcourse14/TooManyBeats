@@ -1,0 +1,15 @@
+{
+  "name": "Timeless - Dan Korshunov",
+  "song": "audio/Timeless - Dan Korshunov.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 18,
+  "spawnRate": 90,
+  "speedRampRate": 0.0004,
+  "numLanes": 2,
+  "laneTheme": "ice",
+  "beatDrop": 18,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration": 210
+}
