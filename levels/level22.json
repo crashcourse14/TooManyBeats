@@ -1,0 +1,15 @@
+{
+  "name": "STAY - Justin Bieber",
+  "song": "audio/STAY - Justin Bieber.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 185,
+  "spawnRate": 90,
+  "speedRampRate": 0.0006,
+  "numLanes": 2,
+  "laneTheme": "ice",
+  "beatDrop": 18,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration": 237
+}
