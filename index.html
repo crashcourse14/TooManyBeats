@@ -4,11 +4,158 @@
 <meta charset="UTF-8">
 <title>Too Many Beats</title>
 <link rel="manifest" href="/manifest.json">
-<link rel="stylesheet" href="/css/styles.css">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; overflow: hidden; font-family: 'Orbitron', monospace; cursor: none; }
+  canvas { display: block; }
+
+  /* ── Loading ── */
+  #loading-screen {
+    position: fixed; inset: 0; background: #000;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 20px; z-index: 100; transition: opacity 0.6s;
+  }
+  #loading-screen.hidden { opacity: 0; pointer-events: none; }
+  #loading-title { font-size: 42px; font-weight: 900; color: white; letter-spacing: 6px; text-shadow: 0 0 30px cyan; }
+  #loading-sub { font-family: 'Share Tech Mono', monospace; font-size: 13px; letter-spacing: 4px; color: rgba(255,255,255,0.4); }
+  #loading-bar-wrap { width: 260px; height: 3px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+  #loading-bar { height: 100%; width: 0%; background: cyan; box-shadow: 0 0 10px cyan; transition: width 0.3s; }
+  #loading-error { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: #ff4466; display: none; text-align: center; max-width: 400px; line-height: 1.7; }
+
+  /* ── HUD ── */
+  #ui { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-start; padding: 20px 30px; pointer-events: none; z-index: 10; }
+  .stat-block { display: flex; flex-direction: column; gap: 2px; }
+  .stat-label { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 3px; color: rgba(255,255,255,0.4); text-transform: uppercase; }
+  .stat-value { font-size: 28px; font-weight: 900; color: white; line-height: 1; transition: color 0.1s; }
+  #score-val { color: #00ffff; text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff44; }
+  #combo-val { color: #ff00ff; text-shadow: 0 0 20px #ff00ff, 0 0 40px #ff00ff44; transition: color 0.2s, text-shadow 0.2s, transform 0.1s; }
+  #combo-val.tier2 { color: #ff8800; text-shadow: 0 0 20px #ff8800, 0 0 50px #ff880066; }
+  #combo-val.tier3 { color: #ff2200; text-shadow: 0 0 25px #ff2200, 0 0 60px #ff220077; }
+  #combo-val.tier4 { color: #ffffff; text-shadow: 0 0 15px #fff, 0 0 40px #ff00ff, 0 0 80px #ff00ffaa; }
+  #combo-val.combo-pop { animation: combo-pop 0.25s cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+  @keyframes combo-pop { 0% { transform: scale(1); } 40% { transform: scale(1.55); } 100% { transform: scale(1); } }
+  #best-val { color: #ffff00; text-shadow: 0 0 20px #ffff00, 0 0 40px #ffff0044; }
+  #level-tag { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 3px; color: rgba(255,255,255,0.35); pointer-events: none; z-index: 10; }
+  #lane-indicator { position: fixed; left: 20px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 10; pointer-events: none; }
+  .lane-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: all 0.15s; }
+  .lane-dot.active { background: white; box-shadow: 0 0 10px white, 0 0 20px white; transform: scale(1.5); }
+  #powerup-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 10; pointer-events: none; }
+  .pu-icon { width: 40px; height: 40px; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 18px; opacity: 0.3; transition: all 0.3s; }
+  .pu-icon.active { opacity: 1; border-color: white; box-shadow: 0 0 15px rgba(255,255,255,0.5); animation: pu-pulse 0.5s ease infinite alternate; }
+  @keyframes pu-pulse { from { transform: scale(1); } to { transform: scale(1.1); } }
+  #custom-cursor { position: fixed; width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.6); border-radius: 50%; pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); }
+
+  /* ══ TOP NAV ══ */
+  #top-nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: flex-end;
+    padding: 12px 20px; gap: 8px; z-index: 25;
+    pointer-events: none; opacity: 0; transition: opacity 0.3s;
+    background: linear-gradient(rgba(0,0,0,0.6) 0%, transparent 100%);
+  }
+  #top-nav.visible { pointer-events: all; opacity: 1; }
+  .nav-btn {
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px;
+    color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.14); border-radius: 6px; padding: 7px 16px;
+    cursor: pointer; transition: all 0.15s; text-transform: uppercase;
+  }
+  .nav-btn:hover { color: white; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); }
+  .nav-btn.active-tab { color: #00ffff; border-color: rgba(0,255,255,0.5); background: rgba(0,255,255,0.08); box-shadow: 0 0 14px rgba(0,255,255,0.15); }
+
+  /* ══ LEVEL SELECT ══ */
+  #level-select {
+    position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+    z-index: 20; pointer-events: none; opacity: 0; transition: opacity 0.3s;
+    padding-top: 54px;
+  }
+  #level-select.visible { pointer-events: all; opacity: 1; }
+  #ls-title { margin-top: 10px; font-family: 'Orbitron', monospace; font-size: clamp(22px, 4vw, 48px); font-weight: 900; color: white; letter-spacing: 4px; text-shadow: 0 0 30px cyan, 0 0 60px rgba(0,255,255,0.25); pointer-events: none; line-height: 1; }
+  #ls-sub { margin-top: 4px; font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 3px; color: rgba(255,255,255,0.35); pointer-events: none; }
+  #ls-search-wrap { margin-top: 14px; position: relative; width: min(420px, 90vw); }
+  #ls-search-wrap::before { content: '⌕'; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.35); font-size: 18px; pointer-events: none; }
+  #ls-search { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 10px 14px 10px 40px; color: white; font-family: 'Share Tech Mono', monospace; font-size: 13px; letter-spacing: 2px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; cursor: text; }
+  #ls-search::placeholder { color: rgba(255,255,255,0.2); }
+  #ls-search:focus { border-color: rgba(0,255,255,0.5); box-shadow: 0 0 16px rgba(0,255,255,0.15); }
+  #ls-search-count { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-family: 'Share Tech Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.25); pointer-events: none; }
+  #ls-grid-wrap { margin-top: 12px; width: min(960px, 96vw); flex: 1; overflow-y: auto; overflow-x: hidden; padding: 4px 6px 80px; scroll-behavior: smooth; }
+  #ls-grid-wrap::-webkit-scrollbar { width: 4px; }
+  #ls-grid-wrap::-webkit-scrollbar-track { background: transparent; }
+  #ls-grid-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+  #ls-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+  .ls-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 14px 14px 12px; cursor: pointer; transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s, background 0.15s; display: flex; flex-direction: column; gap: 8px; position: relative; overflow: hidden; min-height: 230px; }
+  .ls-card:hover { transform: translateY(-3px); background: rgba(255,255,255,0.07); }
+  .ls-card.selected { border-width: 2px; transform: translateY(-4px); }
+  .ls-card::after { content: ''; position: absolute; inset: 0; border-radius: 12px; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+  .ls-card.selected::after { opacity: 1; }
+  .ls-card-name { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700; color: white; line-height: 1.3; word-break: break-word; }
+  .ls-card-preview { flex: 1; border-radius: 6px; overflow: hidden; min-height: 52px; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 6px 8px; background: rgba(0,0,0,0.25); }
+  .ls-lane-row { height: 14px; border-radius: 3px; display: flex; align-items: center; padding-left: 4px; }
+  .ls-ship { width: 12px; height: 8px; border-radius: 2px; }
+  .ls-stats { display: flex; flex-direction: column; gap: 3px; }
+  .ls-stat-row { display: flex; justify-content: space-between; align-items: center; }
+  .ls-stat-label { font-family: 'Share Tech Mono', monospace; font-size: 8px; letter-spacing: 1px; color: rgba(255,255,255,0.35); text-transform: uppercase; }
+  .ls-stat-val { font-family: 'Share Tech Mono', monospace; font-size: 10px; font-weight: bold; color: rgba(255,255,255,0.75); }
+  .ls-song-val { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom; font-size: 9px; }
+  .ls-beat-badge { font-family: 'Share Tech Mono', monospace; font-size: 8px; letter-spacing: 1px; color: #ff88ff; background: rgba(255,0,200,0.12); border: 1px solid rgba(255,0,200,0.3); border-radius: 4px; padding: 2px 6px; text-align: center; }
+  .ls-no-results { grid-column: 1/-1; text-align: center; font-family: 'Share Tech Mono', monospace; font-size: 13px; color: rgba(255,255,255,0.25); padding: 40px 0; letter-spacing: 2px; }
+  #ls-launch { position: fixed; bottom: 0; left: 0; right: 0; padding: 16px 0 20px; display: flex; flex-direction: column; align-items: center; gap: 6px; background: linear-gradient(transparent, rgba(0,0,0,0.95) 40%); pointer-events: none; z-index: 21; opacity: 0; transition: opacity 0.3s; }
+  #ls-launch.visible { opacity: 1; }
+  #ls-launch-hint { font-family: 'Orbitron', monospace; font-size: 15px; font-weight: 700; color: white; letter-spacing: 3px; }
+  #ls-launch-sub { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; color: rgba(255,255,255,0.3); }
+  #ls-best { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: rgba(255,255,0,0.5); letter-spacing: 1px; }
+  #ls-version { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; color: rgba(255,255,255,0.2); }
+
+  /* ══ SHARED PANEL (leaderboard + links) ══ */
+  .side-panel { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; z-index: 20; pointer-events: none; opacity: 0; transition: opacity 0.3s; padding-top: 68px; }
+  .side-panel.visible { pointer-events: all; opacity: 1; }
+  .panel-heading { font-family: 'Orbitron', monospace; font-size: clamp(20px, 3.5vw, 40px); font-weight: 900; color: white; letter-spacing: 4px; line-height: 1; }
+  .panel-sub { margin-top: 5px; font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 3px; color: rgba(255,255,255,0.3); }
+  .panel-body { margin-top: 20px; width: min(780px, 94vw); flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: 40px; }
+  .panel-body::-webkit-scrollbar { width: 4px; }
+  .panel-body::-webkit-scrollbar-track { background: transparent; }
+  .panel-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+  /* ══ LEADERBOARD ══ */
+  #lb-filter-row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .lb-filter-btn { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1px; color: rgba(255,255,255,0.45); background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 5px; padding: 5px 12px; cursor: pointer; transition: all 0.15s; text-transform: uppercase; }
+  .lb-filter-btn:hover { color: white; background: rgba(255,255,255,0.09); }
+  .lb-filter-btn.active { color: #00ffff; border-color: rgba(0,255,255,0.45); background: rgba(0,255,255,0.07); }
+  #lb-list { display: flex; flex-direction: column; gap: 6px; }
+  .lb-row { display: grid; grid-template-columns: 48px 1fr auto auto; align-items: center; gap: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 12px 16px; transition: background 0.15s; position: relative; overflow: hidden; }
+  .lb-row:hover { background: rgba(255,255,255,0.07); }
+  .lb-row.rank-1 { border-color: rgba(255,215,0,0.4); background: rgba(255,215,0,0.05); }
+  .lb-row.rank-2 { border-color: rgba(192,192,192,0.35); background: rgba(192,192,192,0.04); }
+  .lb-row.rank-3 { border-color: rgba(205,127,50,0.35); background: rgba(205,127,50,0.04); }
+  .lb-bar { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, rgba(0,255,255,0.07), transparent); pointer-events: none; border-radius: 10px; }
+  .lb-rank { font-family: 'Orbitron', monospace; font-size: 18px; font-weight: 900; text-align: center; color: rgba(255,255,255,0.28); }
+  .lb-row.rank-1 .lb-rank { color: #ffd700; text-shadow: 0 0 12px #ffd700aa; }
+  .lb-row.rank-2 .lb-rank { color: #c0c0c0; text-shadow: 0 0 10px #c0c0c0aa; }
+  .lb-row.rank-3 .lb-rank { color: #cd7f32; text-shadow: 0 0 10px #cd7f32aa; }
+  .lb-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .lb-name { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700; color: white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lb-meta { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,0.3); }
+  .lb-score { font-family: 'Orbitron', monospace; font-size: 20px; font-weight: 900; color: #00ffff; text-shadow: 0 0 14px #00ffff88; text-align: right; }
+  .lb-level-tag { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.07); border-radius: 4px; padding: 2px 7px; white-space: nowrap; align-self: center; }
+  .lb-msg { font-family: 'Share Tech Mono', monospace; font-size: 13px; letter-spacing: 2px; color: rgba(255,255,255,0.25); text-align: center; padding: 50px 0; }
+  .lb-msg.error { color: #ff4466; }
+
+  /* ══ LINKS ══ */
+  #links-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .link-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 20px 18px 16px; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 8px; transition: transform 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s; position: relative; overflow: hidden; cursor: pointer; }
+  .link-card:hover { transform: translateY(-4px); background: rgba(255,255,255,0.08); box-shadow: 0 10px 32px rgba(0,0,0,0.5); }
+  .link-card-arrow { position: absolute; top: 14px; right: 14px; font-size: 14px; color: rgba(255,255,255,0.2); transition: color 0.15s, transform 0.15s; }
+  .link-card:hover .link-card-arrow { color: rgba(255,255,255,0.6); transform: translate(2px,-2px); }
+  .link-card-icon { font-size: 28px; line-height: 1; }
+  .link-card-title { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700; color: white; }
+  .link-card-desc { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1px; line-height: 1.6; color: rgba(255,255,255,0.4); }
+  .link-card-url { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,0.2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: auto; }
+</style>
 </head>
 <body>
 
-<!-- Loading overlay -->
 <div id="loading-screen">
   <div id="loading-title">Too Many Beats</div>
   <div id="loading-sub">INITIALIZING LEVEL DATA</div>
@@ -34,13 +181,11 @@
 </div>
 
 <div id="level-tag"></div>
-
 <div id="lane-indicator">
   <div class="lane-dot" id="dot-0"></div>
   <div class="lane-dot" id="dot-1"></div>
   <div class="lane-dot" id="dot-2"></div>
 </div>
-
 <div id="powerup-bar">
   <div class="pu-icon" id="pu-shield" title="Shield">🛡️</div>
   <div class="pu-icon" id="pu-slow"   title="Slow-Mo">⏱️</div>
@@ -49,29 +194,54 @@
 
 <canvas id="gameCanvas"></canvas>
 
-<!-- Level Select Overlay (shown on top of canvas when state=title) -->
+<!-- Top nav bar (shown when on title screen) -->
+<div id="top-nav">
+  <button class="nav-btn active-tab" id="nav-btn-levels"      onclick="showTitleScreen('levels')">▤ LEVELS</button>
+  <button class="nav-btn"            id="nav-btn-leaderboard" onclick="showTitleScreen('leaderboard')">🏆 LEADERBOARD</button>
+  <button class="nav-btn"            id="nav-btn-links"       onclick="showTitleScreen('links')">🔗 LINKS</button>
+</div>
+
+<!-- Level Select -->
 <div id="level-select">
   <div id="ls-title">TOO MANY BEATS</div>
   <div id="ls-sub">SELECT YOUR LEVEL</div>
-
   <div id="ls-search-wrap">
     <input id="ls-search" type="text" placeholder="Search levels or songs..." autocomplete="off" spellcheck="false" />
     <span id="ls-search-count"></span>
   </div>
-
   <div id="ls-grid-wrap">
-    <div id="ls-grid"><!-- cards injected by JS --></div>
+    <div id="ls-grid"></div>
   </div>
 </div>
 
-<!-- Launch bar (fixed bottom, visible with level select) -->
+<!-- Leaderboard -->
+<div id="leaderboard-panel" class="side-panel">
+  <div class="panel-heading" style="text-shadow:0 0 22px rgba(255,215,0,0.5)">🏆 LEADERBOARD</div>
+  <div class="panel-sub">TOP SCORES FROM ALL PLAYERS</div>
+  <div class="panel-body">
+    <div id="lb-filter-row"></div>
+    <div id="lb-list"><div class="lb-msg">LOADING…</div></div>
+  </div>
+</div>
+
+<!-- Links -->
+<div id="links-panel" class="side-panel">
+  <div class="panel-heading" style="text-shadow:0 0 22px rgba(0,255,255,0.4)">🔗 LINKS</div>
+  <div class="panel-sub">RESOURCES &amp; COMMUNITY</div>
+  <div class="panel-body">
+    <div id="links-grid"></div>
+  </div>
+</div>
+
+<!-- Launch bar -->
 <div id="ls-launch">
   <div id="ls-launch-hint">PRESS SPACE TO LAUNCH</div>
   <div id="ls-launch-sub">click to select  ·  double-click or SPACE to launch  ·  ←→ to navigate</div>
   <div id="ls-best"></div>
-  <div id="ls-version">Update (Beta) 1.01</div>
+  <div id="ls-version">Update (Beta) 1.0</div>
 </div>
-<canvas id="gameCanvas"></canvas>
-<script src="/javascript/game.js"></script>
+
+<script src="error.js"></script>
+<script src="test.js"></script>
 </body>
 </html>
