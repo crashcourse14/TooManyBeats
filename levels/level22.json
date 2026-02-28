@@ -7,8 +7,8 @@
   "spawnRate": 90,
   "speedRampRate": 0.0006,
   "numLanes": 2,
-  "laneTheme": "ice",
-  "beatDrop": 18,
+  "laneTheme": "blackout",
+  "beatDrop": null,
   "beatCalms": null,
   "BeatDropTimeMultiplyer": null,
   "levelDuration": 237
