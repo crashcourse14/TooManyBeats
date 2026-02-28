@@ -3,7 +3,7 @@
   "song": "audio/STAY - Justin Bieber.mp3",
   "color": "#00ffff",
   "bpm": 140,
-  "obstacleSpeed": 185,
+  "obstacleSpeed": 15,
   "spawnRate": 90,
   "speedRampRate": 0.0006,
   "numLanes": 2,
