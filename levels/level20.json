@@ -7,7 +7,7 @@
   "spawnRate": 90,
   "speedRampRate": 0.0006,
   "numLanes": 2,
-  "laneTheme": "neon",
+  "laneTheme": "greenout",
   "beatDrop": null,
   "beatCalms": null,
   "BeatDropTimeMultiplyer": null,
