@@ -371,8 +371,8 @@ function drawBackground() {
         c2 = '#000515';
     }
     if (theme === 'blackout') {
-        c1 = '#000000';
-        c2 = '#ffffffff';
+        c1 = '#ffffffff';
+        c2 = '#000000';
     }
     const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
     bg.addColorStop(0, c1);
