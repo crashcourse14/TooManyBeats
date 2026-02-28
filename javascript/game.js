@@ -370,9 +370,13 @@ function drawBackground() {
         c1 = '#000a0f';
         c2 = '#000515';
     }
-    if (theme === 'blackout') {
+    if (theme === 'cisemic') {
         c1 = '#ffffffff';
         c2 = '#000000';
+    }
+    if (theme === 'redout') {
+        c1 = '#5c0606';
+        c2 = '#5c0606';
     }
     const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
     bg.addColorStop(0, c1);
