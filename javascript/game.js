@@ -378,6 +378,12 @@ function drawBackground() {
         c1 = '#5c0606';
         c2 = '#5c0606';
     }
+
+    if (theme === 'greenout') {
+        c1 = '#5cad23';
+        c2 = '#5cad23';
+    }
+
     const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
     bg.addColorStop(0, c1);
     bg.addColorStop(1, c2);
