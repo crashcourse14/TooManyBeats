@@ -1,0 +1,15 @@
+{
+  "name": "Get Lucky - Daft Punk",
+  "song": "audio/Parlez-Vous - Estiva.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 18,
+  "spawnRate": 70,
+  "speedRampRate": 0.0006,
+  "numLanes": 3,
+  "laneTheme": "neon",
+  "beatDrop": null,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration": 408
+}

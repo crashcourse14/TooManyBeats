@@ -1,0 +1,15 @@
+{
+    "name": "SLAY! - Eternxlkz",
+    "song": "audio/SLAY! - Eternxlkz.mp3",
+    "color": "#00ffff",
+    "bpm": 140,
+    "obstacleSpeed": 16,
+    "spawnRate": 90,
+    "speedRampRate": 0.0008,
+    "numLanes": 3,
+    "laneTheme": "neon",
+    "beatDrop": 18,
+    "beatCalms": 130,
+    "BeatDropTimeMultiplyer": 2.4,
+    "levelDuration": 147
+  }

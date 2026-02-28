@@ -1,0 +1,15 @@
+{
+    "name": "Armed and Dangerous - King Von",
+    "song": "audio/Armed and Dangerous - King Von.mp3",
+    "color": "#00ffff",
+    "bpm": 140,
+    "obstacleSpeed": 16,
+    "spawnRate": 90,
+    "speedRampRate": 0.0005,
+    "numLanes": 3,
+    "laneTheme": "neon",
+    "beatDrop": null,
+    "beatCalms": null,
+    "BeatDropTimeMultiplyer": null,
+    "levelDuration": 202
+  }

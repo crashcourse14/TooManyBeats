@@ -1,0 +1,15 @@
+{
+    "name": "Versatile (Super Slowed) - L.P. Rhythm",
+    "song": "audio/Versatile (Super Slowed).mp3",
+    "color": "#00ffff",
+    "bpm": 140,
+    "obstacleSpeed": 8,
+    "spawnRate": 70,
+    "speedRampRate": 0.0003,
+    "numLanes": 3,
+    "laneTheme": "neon",
+    "beatDrop": 53.5,
+    "beatCalms": 130,
+    "BeatDropTimeMultiplyer": 1.5,
+    "levelDuration": 212
+  }

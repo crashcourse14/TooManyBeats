@@ -1,0 +1,15 @@
+{
+  "name": "We Wont Be Alone - Feint",
+  "song": "audio/We Wont Be Alone - Feint.mp3",
+  "color": "#fffff",
+  "bpm": 140,
+  "obstacleSpeed": 20,
+  "spawnRate": 40,
+  "speedRampRate": 0.0007,
+  "numLanes": 2,
+  "laneTheme": "neon",
+  "beatDrop": null,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration":  354
+}

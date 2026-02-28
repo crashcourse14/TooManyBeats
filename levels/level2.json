@@ -1,0 +1,15 @@
+{
+    "name": "Breathe - Yeat",
+    "song": "audio/Breathe - Yeat.mp3",
+    "color": "#00ffff",
+    "bpm": 140,
+    "obstacleSpeed": 5,
+    "spawnRate": 90,
+    "speedRampRate": 0.0007,
+    "numLanes": 3,
+    "laneTheme": "neon",
+    "beatDrop": 16,
+    "beatCalms": 250,
+    "BeatDropTimeMultiplyer": 4.3,
+    "levelDuration": 250
+  }

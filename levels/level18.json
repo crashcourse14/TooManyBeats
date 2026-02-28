@@ -1,0 +1,15 @@
+{
+  "name": "Money Twerk- Yeat",
+  "song": "audio/Money Twerk - Yeat.mp3",
+  "color": "#fffff",
+  "bpm": 140,
+  "obstacleSpeed": 22,
+  "spawnRate": 40,
+  "speedRampRate": 0.0004,
+  "numLanes": 2,
+  "laneTheme": "neon",
+  "beatDrop": null,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration":  220
+}

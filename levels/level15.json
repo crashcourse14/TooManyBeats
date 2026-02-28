@@ -1,0 +1,15 @@
+{
+  "name": "FEILD TRIP - Kanye West",
+  "song": "audio/FEILD TRIP - Kanye West.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 18,
+  "spawnRate": 40,
+  "speedRampRate": 0.0006,
+  "numLanes": 2,
+  "laneTheme": "neon",
+  "beatDrop": null,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration":  245
+}

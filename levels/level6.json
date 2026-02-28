@@ -1,0 +1,15 @@
+{
+    "name": "Holy Ground - BigXThaPlug",
+    "song": "audio/Holy Ground - BigXThaPlug.mp3",
+    "color": "#00ffff",
+    "bpm": 140,
+    "obstacleSpeed": 12,
+    "spawnRate": 90,
+    "speedRampRate": 0.0005,
+    "numLanes": 3,
+    "laneTheme": "neon",
+    "beatDrop": 112,
+    "beatCalms": 257,
+    "BeatDropTimeMultiplyer": 1.8,
+    "levelDuration": 257
+  }

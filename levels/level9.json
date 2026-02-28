@@ -1,0 +1,15 @@
+{
+  "name": "In The End - Linkin Park",
+  "song": "audio/In The End - Linkin Park.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 20,
+  "spawnRate": 90,
+  "speedRampRate": 0.0008,
+  "numLanes": 3,
+  "laneTheme": "neon",
+  "beatDrop": null,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration": 338
+}

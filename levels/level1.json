@@ -1,0 +1,15 @@
+{
+    "name": "Empty out your pockets - Juice WRLD",
+    "song": "audio/test.mp3",
+    "color": "#00ffff",
+    "bpm": 128,
+    "obstacleSpeed": 10,
+    "spawnRate": 40,
+    "speedRampRate": 0.000005,
+    "numLanes": 2,
+    "laneTheme": "ice",
+    "beatDrop": 20,
+    "beatCalms": 220,
+    "BeatDropTimeMultiplyer": 2.1,
+    "levelDuration": 220
+  }

@@ -1,0 +1,15 @@
+{
+    "name": "Royalty - Naomi",
+    "song": "audio/Royalty - Naomi.mp3",
+    "color": "#00ffff",
+    "bpm": 140,
+    "obstacleSpeed": 10,
+    "spawnRate": 90,
+    "speedRampRate": 0.0002,
+    "numLanes": 3,
+    "laneTheme": "neon",
+    "beatDrop": 111,
+    "beatCalms": 136,
+    "BeatDropTimeMultiplyer": 2.1,
+    "levelDuration": 344
+  }

@@ -1,0 +1,15 @@
+{
+  "name": "TURN IT UP - Cochies",
+  "song": "audio/TURN IT UP - cochies.mp3",
+  "color": "#ff6200",
+  "bpm": 140,
+  "obstacleSpeed": 15,
+  "spawnRate": 40,
+  "speedRampRate": 0.0005,
+  "numLanes": 2,
+  "laneTheme": "fire",
+  "beatDrop": 111,
+  "beatCalms": 54,
+  "BeatDropTimeMultiplyer": 2.2,
+  "levelDuration":  322
+}

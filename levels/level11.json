@@ -1,0 +1,15 @@
+{
+  "name": "Parlez-Vous - Estiva",
+  "song": "audio/Parlez-Vous - Estiva.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 18,
+  "spawnRate": 40,
+  "speedRampRate": 0.0003,
+  "numLanes": 2,
+  "laneTheme": "neon",
+  "beatDrop": null,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration":  313
+}

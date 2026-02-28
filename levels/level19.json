@@ -1,0 +1,15 @@
+{
+  "name": "Rockstar - Post Malone",
+  "song": "audio/Rockstar - Post Malone.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 16,
+  "spawnRate": 75,
+  "speedRampRate": 0.0004,
+  "numLanes": 3,
+  "laneTheme": "fire",
+  "beatDrop": null,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration": 401
+}
