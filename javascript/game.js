@@ -36,28 +36,6 @@ window.addEventListener('mousemove', e => {
   }
 */
 
-// List of level files to try loading, in order
-const LEVEL_FILES = [
-  'levels/level1.json',
-  'levels/level2.json',
-  'levels/level3.json',
-  'levels/level4.json',
-  'levels/level5.json',
-  'levels/level6.json',
-  'levels/level7.json',
-  'levels/level8.json',
-  'levels/level9.json',
-  'levels/level10.json',
-  'levels/level11.json',
-  'levels/level12.json',
-  'levels/level13.json',
-  'levels/level14.json',
-  'levels/level15.json',
-  'levels/level16.json',
-  'levels/level17.json',
-  'levels/level18.json',
-  'levels/level19.json',
-];
 
 // Fallback defaults if a field is missing from the JSON
 const LEVEL_DEFAULTS = {
@@ -1427,6 +1405,8 @@ window.addEventListener('keydown', e => {
     e.preventDefault();
     if (state === 'playing' || state === 'dead' || state === 'levelcomplete') {
       stopAudio();
+      combo = 0;
+      score = 0;
       state = 'title';
       showLevelSelect();
     }

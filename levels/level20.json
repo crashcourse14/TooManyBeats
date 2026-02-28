@@ -1,0 +1,15 @@
+{
+  "name": "Graze the Roof - Laura Shigihara",
+  "song": "audio/Graze the Roof.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 15,
+  "spawnRate": 90,
+  "speedRampRate": 0.0006,
+  "numLanes": 2,
+  "laneTheme": "neon",
+  "beatDrop": null,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration": 304
+}
