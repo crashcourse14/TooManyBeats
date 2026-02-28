@@ -25,6 +25,7 @@ const LEVEL_FILES = [
     'levels/level13.json', 'levels/level14.json', 'levels/level15.json',
     'levels/level16.json', 'levels/level17.json', 'levels/level18.json',
     'levels/level19.json', 'levels/level20.json', 'levels/level21.json',
+    'levels/level22.json',
 ];
 
 const LEVEL_DEFAULTS = {
