@@ -672,12 +672,7 @@ function renderLeaderboard() {
 // ──────────────────────────────────────────────────────────
 
 const LINKS_DATA = [
-  { icon:'🎮', title:'ITCH.IO PAGE',   desc:'Download, rate, and leave a comment on the game', url:'https://itch.io',            color:'#fa5c5c' },
-  { icon:'💬', title:'DISCORD',        desc:'Join the community, share scores, report bugs',   url:'https://discord.gg',         color:'#5865f2' },
-  { icon:'🐦', title:'TWITTER / X',    desc:'Follow for updates and behind-the-scenes posts',  url:'https://twitter.com',        color:'#1da1f2' },
-  { icon:'📺', title:'YOUTUBE',        desc:'Trailers, dev logs, and gameplay footage',         url:'https://youtube.com',        color:'#ff0000' },
-  { icon:'🐙', title:'GITHUB',         desc:'Source code, issues, and contributions',           url:'https://github.com',         color:'#a371f7' },
-  { icon:'📧', title:'CONTACT',        desc:'Press, collabs, or general feedback',              url:'mailto:hello@example.com',   color:'#00ffcc' },
+    { icon:'💬', title:'STOAT',        desc:'Join the community, share scores, report bugs, and chat with us',   url:'https://stt.gg/s5bp7DP0',         color:'#5865f2' },
 ];
 
 function buildLinksGrid() {
