@@ -156,7 +156,7 @@ async function loadAllLevels() {
     if (errors.length > 0) {
       errorEl.style.display = 'block';
       errorEl.innerHTML =
-        `⚠️ No level files found. Using defaults.<br><br>` +
+        `No level files found. Using defaults.<br><br>` +
         `Place level JSON files in <code>levels/</code> and audio in <code>audio/</code>.<br><br>` +
         `Errors:<br>` + errors.join('<br>');
     }
@@ -1092,6 +1092,19 @@ function gameLoop() {
     return;
   }
 
+  if (state === 'dead') {
+    // Draw frozen game world with dead overlay on top
+    drawLanes();
+    drawObstacles();
+    drawPowerups();
+    drawPlayer();
+    drawParticles();
+    drawDead();
+
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+
   if (state === 'levelcomplete') {
     // Still draw the game world frozen underneath
     drawLanes();
@@ -1136,7 +1149,7 @@ function gameLoop() {
         screenShake = 8;
         obstacles.splice(i,1); continue;
       }
-      die(); return;
+      die(); break;
     }
     if (o.x+o.w < -20) { obstacles.splice(i,1); continue; }
   }
@@ -1282,8 +1295,6 @@ function gameLoop() {
   const scaledSize = Math.min(baseSize + Math.floor(combo / 5) * 3, 56);
   comboEl.style.fontSize = scaledSize + 'px';
 
-  if (state === 'dead') drawDead();
-
   requestAnimationFrame(gameLoop);
 }
 
@@ -1425,7 +1436,7 @@ window.addEventListener('keydown', e => {
   if (e.code === 'Space') {
     e.preventDefault();
     if (state === 'title') { startGame(); return; }
-    if (state === 'dead')  { startGame(); return; }
+    if (state === 'dead')  { stopAudio(); loadAudio(currentLevel && currentLevel.song); startGame(); return; }
     if (state === 'levelcomplete') { advanceToNextLevel(); return; }
     return;
   }
@@ -1458,7 +1469,7 @@ window.addEventListener('touchstart', e => {
 }, { passive: true });
 window.addEventListener('touchend', e => {
   if (state === 'title') return; // let the HTML overlay handle its own taps
-  if (state === 'dead')  { startGame(); return; }
+  if (state === 'dead')  { stopAudio(); loadAudio(currentLevel && currentLevel.song); startGame(); return; }
   if (state === 'levelcomplete') { advanceToNextLevel(); return; }
   if (touchStartY === null) return;
   const dy = e.changedTouches[0].clientY - touchStartY;
@@ -1470,7 +1481,7 @@ window.addEventListener('touchend', e => {
 canvas.addEventListener('click', e => {
   // Don't intercept clicks when the level select overlay is visible
   if (state === 'title') return;
-  if (state === 'dead')  { startGame(); return; }
+  if (state === 'dead')  { stopAudio(); loadAudio(currentLevel && currentLevel.song); startGame(); return; }
   if (state === 'levelcomplete') { advanceToNextLevel(); return; }
   movePlayer(e.clientY > canvas.height / 2 ? 1 : -1);
 });
