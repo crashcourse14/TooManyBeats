@@ -24,6 +24,94 @@
   #loading-bar { height: 100%; width: 0%; background: cyan; box-shadow: 0 0 10px cyan; transition: width 0.3s; }
   #loading-error { font-family: 'Share Tech Mono', monospace; font-size: 12px; color: #ff4466; display: none; text-align: center; max-width: 400px; line-height: 1.7; }
 
+  /* ══ CONTENT WARNING SCREEN ══ */
+  #content-warning {
+    position: fixed; inset: 0; background: #000;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 0; z-index: 90;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.5s;
+  }
+  #content-warning.visible { opacity: 1; pointer-events: all; }
+  #content-warning.hidden  { opacity: 0; pointer-events: none; }
+
+  #cw-badge {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; letter-spacing: 4px;
+    color: #ff8800;
+    background: rgba(255,136,0,0.12);
+    border: 1px solid rgba(255,136,0,0.4);
+    border-radius: 4px; padding: 5px 16px;
+    margin-bottom: 28px;
+  }
+  #cw-icon {
+    font-size: 52px; line-height: 1;
+    margin-bottom: 22px;
+    filter: drop-shadow(0 0 18px rgba(255,180,0,0.6));
+  }
+  #cw-title {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(22px, 4vw, 42px); font-weight: 900;
+    color: white; letter-spacing: 3px;
+    text-shadow: 0 0 24px rgba(255,180,0,0.5);
+    margin-bottom: 20px; text-align: center;
+  }
+  #cw-box {
+    background: rgba(255,136,0,0.07);
+    border: 1px solid rgba(255,136,0,0.25);
+    border-radius: 14px;
+    padding: 26px 36px;
+    max-width: min(520px, 90vw);
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  #cw-body {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px; letter-spacing: 1px; line-height: 2;
+    color: rgba(255,255,255,0.75);
+  }
+  #cw-body strong {
+    color: #ffcc44;
+    font-style: normal;
+    letter-spacing: 2px;
+  }
+  #cw-divider {
+    width: 60px; height: 1px;
+    background: rgba(255,136,0,0.3);
+    margin: 18px auto;
+  }
+  #cw-note {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; letter-spacing: 1px; line-height: 1.8;
+    color: rgba(255,255,255,0.35);
+  }
+  #cw-continue {
+    font-family: 'Orbitron', monospace;
+    font-size: 13px; font-weight: 700; letter-spacing: 3px;
+    color: #000;
+    background: #ffcc44;
+    border: none; border-radius: 8px;
+    padding: 14px 40px;
+    cursor: pointer;
+    transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+    box-shadow: 0 0 24px rgba(255,200,0,0.35);
+  }
+  #cw-continue:hover {
+    background: #ffe066;
+    transform: translateY(-2px);
+    box-shadow: 0 0 36px rgba(255,220,0,0.55);
+  }
+  #cw-continue:active { transform: translateY(0); }
+  #cw-skip {
+    margin-top: 14px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; letter-spacing: 2px;
+    color: rgba(255,255,255,0.25);
+    background: none; border: none; cursor: pointer;
+    transition: color 0.15s;
+  }
+  #cw-skip:hover { color: rgba(255,255,255,0.5); }
+
   /* ── HUD ── */
   #ui { position: fixed; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: flex-start; padding: 20px 30px; pointer-events: none; z-index: 10; }
   .stat-block { display: flex; flex-direction: column; gap: 2px; }
@@ -156,11 +244,35 @@
 </head>
 <body>
 
+<!-- Loading screen -->
 <div id="loading-screen">
   <div id="loading-title">Too Many Beats</div>
   <div id="loading-sub">INITIALIZING LEVEL DATA</div>
   <div id="loading-bar-wrap"><div id="loading-bar"></div></div>
   <div id="loading-error"></div>
+</div>
+
+<!-- ══ CONTENT WARNING SCREEN ══ -->
+<div id="content-warning">
+  <div id="cw-badge">CONTENT ADVISORY</div>
+  <div id="cw-icon">🎵</div>
+  <div id="cw-title">HEADS UP</div>
+  <div id="cw-box">
+    <div id="cw-body">
+      Some songs featured in this game may contain<br>
+      <strong>LYRICS OR THEMES</strong><br>
+      that are not suitable for players<br>
+      <strong>UNDER 13 YEARS OF AGE.</strong>
+      <div id="cw-divider"></div>
+      <div id="cw-note">
+        Parental guidance is recommended for younger players.<br>
+        By continuing, you confirm you are 13 or older,<br>
+        or have permission from a parent or guardian.
+      </div>
+    </div>
+  </div>
+  <button id="cw-continue" onclick="dismissContentWarning()">I UNDERSTAND — LET'S PLAY</button>
+  <button id="cw-skip" onclick="dismissContentWarning()">skip</button>
 </div>
 
 <div id="custom-cursor"></div>
@@ -194,7 +306,7 @@
 
 <canvas id="gameCanvas"></canvas>
 
-<!-- Top nav bar (shown when on title screen) -->
+<!-- Top nav bar -->
 <div id="top-nav">
   <button class="nav-btn active-tab" id="nav-btn-levels"      onclick="showTitleScreen('levels')">▤ LEVELS</button>
   <button class="nav-btn"            id="nav-btn-leaderboard" onclick="showTitleScreen('leaderboard')">🏆 LEADERBOARD</button>
@@ -240,7 +352,6 @@
   <div id="ls-best"></div>
   <div id="ls-version">Update (Beta) 1.23026</div>
 </div>
-
 
 <script src="/javascript/game.js"></script>
 </body>
