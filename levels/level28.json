@@ -1,0 +1,15 @@
+{
+  "name": "BIRDBRAIN - Jaime Paige",
+  "song": "audio/BIRDBRAIN - Jaime paige.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 12,
+  "spawnRate": 60,
+  "speedRampRate": 0.0004,
+  "numLanes": 2,
+  "laneTheme": "fire",
+  "beatDrop": null,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration": 320
+}
