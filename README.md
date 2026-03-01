@@ -32,3 +32,17 @@ The levels are stored in a .json file. There are no rules for songs (be mature a
 Accounts are **manually** added. You can still play the game even if you DONT have an account. 
 Just because the login data is PUBLIC DOES NOT MEAN that you can LOG INTO ANOTHER user's ACCOUNT. 
 Speaking of login data being public; DO NOT make an account using PERSONAL login data. Just create one that you'll remember and one that doesnt matter if someone finds it. 
+
+## Seasonal Titles
+Seasonal Titles are given out to the top 100, 10, and the top number 1 players in the world. These titles include:
+
+- Season # Top Player (White)
+- Season # Top 10 (red)
+- Season # Top 100 (red)
+
+Custom titles will be added by DEVELOPERS. Contributors are NOT allowed to add their own titles.
+
+## Extra
+Do NOT sell these accounts
+Do NOT login into another player's account
+Do NOT give your self a custom title, UNLESS TOLD SO.
