@@ -161,7 +161,7 @@
   }
   #level-select.visible { pointer-events: all; opacity: 1; }
   #ls-title { margin-top: 10px; font-family: 'Orbitron', monospace; font-size: clamp(22px, 4vw, 48px); font-weight: 900; color: white; letter-spacing: 4px; text-shadow: 0 0 30px cyan, 0 0 60px rgba(0,255,255,0.25); pointer-events: none; line-height: 1; }
-  #ls-sub { margin-top: 4px; font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 3px; color: rgba(255,255,255,0.35); pointer-events: none; }
+  #ls-sub { margin-top: 4px; font-family: 'Share Tech Mono', monospace; font-size: 20px; letter-spacing: 3px; color: rgba(255,255,255,0.35); pointer-events: none; }
   #ls-search-wrap { margin-top: 14px; position: relative; width: min(420px, 90vw); }
   #ls-search-wrap::before { content: '⌕'; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.35); font-size: 18px; pointer-events: none; }
   #ls-search { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 10px 14px 10px 40px; color: white; font-family: 'Share Tech Mono', monospace; font-size: 13px; letter-spacing: 2px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; cursor: text; }
@@ -222,9 +222,50 @@
   .lb-row.rank-1 .lb-rank { color: #ffd700; text-shadow: 0 0 12px #ffd700aa; }
   .lb-row.rank-2 .lb-rank { color: #c0c0c0; text-shadow: 0 0 10px #c0c0c0aa; }
   .lb-row.rank-3 .lb-rank { color: #cd7f32; text-shadow: 0 0 10px #cd7f32aa; }
-  .lb-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-  .lb-name { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700; color: white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lb-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .lb-name-row { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+  .lb-name { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700; color: white; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1; min-width: 0; }
   .lb-meta { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,0.3); }
+
+  /* ── Player title badges ── */
+  .lb-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 8px; letter-spacing: 1.5px; font-weight: bold;
+    padding: 2px 8px; border-radius: 4px;
+    white-space: nowrap; flex-shrink: 0;
+    text-transform: uppercase; border: 1px solid;
+    line-height: 1.6;
+  }
+  /* World Record — bright white with white glow */
+  .lb-title.t-wr {
+    color: #ffffff;
+    background: rgba(255,255,255,0.1);
+    border-color: rgba(255,255,255,0.45);
+    text-shadow: 0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.4);
+    box-shadow: 0 0 10px rgba(255,255,255,0.12);
+  }
+  /* Top 10 — deep crimson red */
+  .lb-title.t-top10 {
+    color: #ff3333;
+    background: rgba(160,10,10,0.2);
+    border-color: rgba(210,30,30,0.55);
+    text-shadow: 0 0 8px rgba(255,50,50,0.7);
+    box-shadow: 0 0 8px rgba(180,10,10,0.25);
+  }
+  /* Top 100 — warm rich gold */
+  .lb-title.t-top100 {
+    color: #f5c842;
+    background: rgba(160,120,0,0.18);
+    border-color: rgba(200,160,10,0.55);
+    text-shadow: 0 0 8px rgba(230,190,0,0.65);
+    box-shadow: 0 0 8px rgba(180,140,0,0.22);
+  }
+  /* Generic fallback for any other custom title */
+  .lb-title.t-custom {
+    color: rgba(200,200,255,0.85);
+    background: rgba(120,120,255,0.08);
+    border-color: rgba(160,160,255,0.25);
+  }
   .lb-score { font-family: 'Orbitron', monospace; font-size: 20px; font-weight: 900; color: #00ffff; text-shadow: 0 0 14px #00ffff88; text-align: right; }
   .lb-level-tag { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.07); border-radius: 4px; padding: 2px 7px; white-space: nowrap; align-self: center; }
   .lb-msg { font-family: 'Share Tech Mono', monospace; font-size: 13px; letter-spacing: 2px; color: rgba(255,255,255,0.25); text-align: center; padding: 50px 0; }
@@ -388,7 +429,7 @@
 
 <!-- Loading screen -->
 <div id="loading-screen">
-  <div id="loading-title">Too Many Beats</div>
+  <div id="loading-title">Too Many Beats<br>Season 1</div>
   <div id="loading-sub">INITIALIZING LEVEL DATA</div>
   <div id="loading-bar-wrap"><div id="loading-bar"></div></div>
   <div id="loading-error"></div>
@@ -459,7 +500,7 @@
 <!-- Level Select -->
 <div id="level-select">
   <div id="ls-title">TOO MANY BEATS</div>
-  <div id="ls-sub">SELECT YOUR LEVEL</div>
+  <div id="ls-sub">SEASON 1</div>
   <div id="ls-search-wrap">
     <input id="ls-search" type="text" placeholder="Search levels or songs..." autocomplete="off" spellcheck="false" />
     <span id="ls-search-count"></span>
@@ -541,6 +582,6 @@
   <div id="ls-version">Update (Beta) 1.23026</div>
 </div>
 
-<script src="/javascript/game.js"></script>
+<script src="game.js"></script>
 </body>
 </html>
