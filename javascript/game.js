@@ -529,9 +529,9 @@ const lsBest   = document.getElementById('ls-best');
 function updateLsBest() { lsBest.textContent = bestScore > 0 ? `ALL-TIME BEST: ${bestScore}` : ''; }
 
 function spawnRateLabel(rate) {
-  if (rate >= 100) return 'EASY';
-  if (rate >= 75)  return 'NORMAL';
-  if (rate >= 55)  return 'HARD';
+  if (rate <= 100) return 'EASY';
+  if (rate <= 75)  return 'NORMAL';
+  if (rate <= 55)  return 'HARD';
   return 'BRUTAL';
 }
 
@@ -637,7 +637,7 @@ async function loadLeaderboard() {
     renderLeaderboard();
   } catch (err) {
     document.getElementById('lb-list').innerHTML =
-      `<div class="lb-msg error">⚠ COULD NOT LOAD LEADERBOARD<br><span style="font-size:9px;opacity:.6">${err.message}</span><br><br>
+      `<div class="lb-msg error">COULD NOT LOAD LEADERBOARD<br><span style="font-size:9px;opacity:.6">${err.message}</span><br><br>
        <span style="font-size:9px;opacity:.4">Make sure /data/leaderboard.json exists on your server.</span></div>`;
   }
 }
@@ -701,12 +701,8 @@ function renderLeaderboard() {
 // ──────────────────────────────────────────────────────────
 
 const LINKS_DATA = [
-  { icon:'🎮', title:'ITCH.IO PAGE',   desc:'Download, rate, and leave a comment on the game', url:'https://itch.io',            color:'#fa5c5c' },
-  { icon:'💬', title:'DISCORD',        desc:'Join the community, share scores, report bugs',   url:'https://discord.gg',         color:'#5865f2' },
-  { icon:'🐦', title:'TWITTER / X',    desc:'Follow for updates and behind-the-scenes posts',  url:'https://twitter.com',        color:'#1da1f2' },
-  { icon:'📺', title:'YOUTUBE',        desc:'Trailers, dev logs, and gameplay footage',         url:'https://youtube.com',        color:'#ff0000' },
-  { icon:'🐙', title:'GITHUB',         desc:'Source code, issues, and contributions',           url:'https://github.com',         color:'#a371f7' },
-  { icon:'📧', title:'CONTACT',        desc:'Press, collabs, or general feedback',              url:'mailto:hello@example.com',   color:'#00ffcc' },
+  { icon:'💻', title:'GITHUB',   desc:'See the source code of the game, add code, and send bug reports.', url:'https://github.com/crashcourse14/TooManyBeats',            color:'#fa5c5c' },
+  { icon:'💬', title:'STOAT CHAT',        desc:'Join the community, share scores, report bugs, and chat with us.',   url:'http://stt.gg/s5bp7DP0',         color:'#5865f2' },
 ];
 
 function buildLinksGrid() {
