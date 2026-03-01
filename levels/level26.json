@@ -1,0 +1,15 @@
+{
+  "name": "Animals x Starboy - TommyMuzzic",
+  "song": "audio/Animals x Starboy.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 10,
+  "spawnRate": 90,
+  "speedRampRate": 0.0004,
+  "numLanes": 2,
+  "laneTheme": "redout",
+  "beatDrop": null,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration": 409
+}
