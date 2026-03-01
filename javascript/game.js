@@ -24,7 +24,15 @@ const LEVEL_FILES = [
   'levels/level10.json', 'levels/level11.json', 'levels/level12.json',
   'levels/level13.json', 'levels/level14.json', 'levels/level15.json',
   'levels/level16.json', 'levels/level17.json', 'levels/level18.json',
-  'levels/level19.json', 'levels/level20.json',
+  'levels/level19.json', 'levels/level20.json', 'levels/level21.json',
+  //For future references 
+  'levels/level22.json', 'levels/level23.json', 'levels/level24.json',
+  'levels/level25.json', 'levels/level26.json', 'levels/level27.json',
+  'levels/level28.json', 'levels/level29.json', 'levels/level30.json',
+  'levels/level31.json', 'levels/level32.json', 'levels/level33.json',
+  'levels/level34.json', 'levels/level35.json', 'levels/level36.json',
+  'levels/level37.json', 'levels/level38.json', 'levels/level39.json',
+  'levels/level40.json'
 ];
 
 const LEVEL_DEFAULTS = {

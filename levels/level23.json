@@ -1,0 +1,15 @@
+{
+  "name": "i love u - wiv",
+  "song": "audio/i love u - wiv.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 12,
+  "spawnRate": 90,
+  "speedRampRate": 0.0003,
+  "numLanes": 2,
+  "laneTheme": "neon",
+  "beatDrop": null,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration": 202
+}
