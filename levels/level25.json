@@ -1,0 +1,15 @@
+{
+  "name": "Akatsuki - Ambassador",
+  "song": "audio/Akatsuki - Ambassador.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 14,
+  "spawnRate": 90,
+  "speedRampRate": 0.0005,
+  "numLanes": 2,
+  "laneTheme": "fire",
+  "beatDrop": null,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration": 219
+}
