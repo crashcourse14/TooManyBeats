@@ -36,9 +36,9 @@ Speaking of login data being public; DO NOT make an account using PERSONAL login
 ## Seasonal Titles
 Seasonal Titles are given out to the top 100, 10, and the top number 1 players in the world. These titles include:
 
-- Season # Top Player (White)
-- Season # Top 10 (red)
-- Season # Top 100 (red)
+- Season # World Record Holder (White)
+- Season # Top 10 (Red)
+- Season # Top 215 (Gold)
 
 Custom titles will be added by DEVELOPERS. Contributors are NOT allowed to add their own titles.
 
