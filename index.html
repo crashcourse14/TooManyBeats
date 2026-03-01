@@ -240,6 +240,148 @@
   .link-card-title { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700; color: white; }
   .link-card-desc { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1px; line-height: 1.6; color: rgba(255,255,255,0.4); }
   .link-card-url { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,0.2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: auto; }
+
+  /* ══ LOGIN PANEL ══ */
+  #login-panel {
+    position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; z-index: 20; pointer-events: none; opacity: 0;
+    transition: opacity 0.3s; padding-top: 60px;
+  }
+  #login-panel.visible { pointer-events: all; opacity: 1; }
+
+  #login-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 36px 40px 32px;
+    width: min(420px, 92vw);
+    display: flex; flex-direction: column; gap: 0;
+  }
+
+  #login-heading {
+    font-family: 'Orbitron', monospace;
+    font-size: 22px; font-weight: 900; letter-spacing: 4px;
+    color: white; text-align: center; margin-bottom: 4px;
+    text-shadow: 0 0 20px rgba(0,255,255,0.4);
+  }
+  #login-sub-heading {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; letter-spacing: 3px;
+    color: rgba(255,255,255,0.3); text-align: center;
+    margin-bottom: 28px;
+  }
+
+  .login-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+  .login-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+  }
+  .login-input {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 8px; padding: 11px 14px;
+    color: white; font-family: 'Share Tech Mono', monospace;
+    font-size: 14px; letter-spacing: 2px; outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    cursor: text;
+  }
+  .login-input::placeholder { color: rgba(255,255,255,0.18); }
+  .login-input:focus {
+    border-color: rgba(0,255,255,0.5);
+    box-shadow: 0 0 16px rgba(0,255,255,0.1);
+  }
+
+  #login-error {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; letter-spacing: 1px;
+    color: #ff4466; text-align: center;
+    min-height: 18px; margin-bottom: 8px;
+    transition: opacity 0.2s;
+  }
+  #login-success {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; letter-spacing: 1px;
+    color: #44ff88; text-align: center;
+    min-height: 18px; margin-bottom: 8px;
+  }
+
+  #login-submit {
+    width: 100%; padding: 13px;
+    font-family: 'Orbitron', monospace;
+    font-size: 12px; font-weight: 700; letter-spacing: 3px;
+    color: #000; background: #00ffff;
+    border: none; border-radius: 8px; cursor: pointer;
+    transition: background 0.15s, transform 0.12s, box-shadow 0.15s;
+    box-shadow: 0 0 20px rgba(0,255,255,0.3);
+    margin-bottom: 20px;
+  }
+  #login-submit:hover {
+    background: #66ffff; transform: translateY(-2px);
+    box-shadow: 0 0 32px rgba(0,255,255,0.5);
+  }
+  #login-submit:active { transform: translateY(0); }
+  #login-submit:disabled {
+    opacity: 0.5; cursor: not-allowed; transform: none;
+  }
+
+  /* logged-in state chip shown in nav */
+  #nav-btn-login.logged-in {
+    color: #44ff88;
+    border-color: rgba(68,255,136,0.5);
+    background: rgba(68,255,136,0.08);
+    box-shadow: 0 0 14px rgba(68,255,136,0.15);
+  }
+
+  /* divider line */
+  .login-divider {
+    border: none; border-top: 1px solid rgba(255,255,255,0.08);
+    margin: 0 0 20px;
+  }
+
+  /* no-account warning box */
+  #login-no-account {
+    background: rgba(255,136,0,0.07);
+    border: 1px solid rgba(255,136,0,0.25);
+    border-radius: 10px; padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  #login-no-account-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 10px; font-weight: 700; letter-spacing: 2px;
+    color: #ffaa33;
+  }
+  #login-no-account-body {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; letter-spacing: 1px; line-height: 1.8;
+    color: rgba(255,255,255,0.5);
+  }
+  #login-no-account-body a {
+    color: #ffaa33; text-decoration: none;
+    border-bottom: 1px solid rgba(255,170,51,0.4);
+    transition: color 0.15s, border-color 0.15s;
+  }
+  #login-no-account-body a:hover { color: #ffcc66; border-color: #ffcc66; }
+
+  /* logout link shown when logged in */
+  #login-logout-row {
+    display: none; flex-direction: column; align-items: center; gap: 10px;
+    text-align: center;
+  }
+  #login-logout-row.visible { display: flex; }
+  #login-logged-as {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px; letter-spacing: 2px; color: rgba(255,255,255,0.5);
+  }
+  #login-logged-as span { color: #44ff88; letter-spacing: 2px; }
+  #login-logout-btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px; letter-spacing: 2px; color: rgba(255,80,80,0.6);
+    background: none; border: 1px solid rgba(255,80,80,0.2);
+    border-radius: 6px; padding: 6px 18px; cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  #login-logout-btn:hover { color: #ff6666; border-color: rgba(255,80,80,0.5); }
 </style>
 </head>
 <body>
@@ -311,6 +453,7 @@
   <button class="nav-btn active-tab" id="nav-btn-levels"      onclick="showTitleScreen('levels')">▤ LEVELS</button>
   <button class="nav-btn"            id="nav-btn-leaderboard" onclick="showTitleScreen('leaderboard')">🏆 LEADERBOARD</button>
   <button class="nav-btn"            id="nav-btn-links"       onclick="showTitleScreen('links')">🔗 LINKS</button>
+  <button class="nav-btn"            id="nav-btn-login"       onclick="showTitleScreen('login')">⚡ LOGIN</button>
 </div>
 
 <!-- Level Select -->
@@ -343,6 +486,51 @@
   <div class="panel-body">
     <div id="links-grid"></div>
   </div>
+</div>
+
+<!-- Login -->
+<div id="login-panel" class="side-panel" style="justify-content:center;padding-top:60px">
+
+  <!-- Form view (shown when not logged in) -->
+  <div id="login-card">
+    <div id="login-heading">PLAYER LOGIN</div>
+    <div id="login-sub-heading">SIGN IN TO YOUR ACCOUNT</div>
+
+    <div class="login-field">
+      <label class="login-label" for="login-username">Username</label>
+      <input class="login-input" id="login-username" type="text"
+             placeholder="your_username" autocomplete="off" spellcheck="false" />
+    </div>
+    <div class="login-field">
+      <label class="login-label" for="login-password">Password</label>
+      <input class="login-input" id="login-password" type="password"
+             placeholder="••••••••" autocomplete="off" />
+    </div>
+
+    <div id="login-error"></div>
+    <div id="login-success"></div>
+
+    <button id="login-submit" onclick="attemptLogin()">LOGIN</button>
+
+    <!-- Logged-in state (shown instead of form after success) -->
+    <div id="login-logout-row">
+      <div id="login-logged-as">LOGGED IN AS <span id="login-username-display"></span></div>
+      <button id="login-logout-btn" onclick="logoutUser()">LOG OUT</button>
+    </div>
+
+    <hr class="login-divider">
+
+    <!-- No-account warning -->
+    <div id="login-no-account">
+      <div id="login-no-account-title">⚠ DON'T HAVE AN ACCOUNT?</div>
+      <div id="login-no-account-body">
+        Accounts are created manually — they're not self-service.<br>
+        To get one, join the Stoat community server and send me a message asking for access:<br><br>
+        <a href="https://stt.gg/s5bp7DP0" target="_blank" rel="noopener">stt.gg/s5bp7DP0</a>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- Launch bar -->

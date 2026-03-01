@@ -846,22 +846,26 @@ const lsOverlay = document.getElementById('level-select');
 const lsLaunch = document.getElementById('ls-launch');
 const lbPanel = document.getElementById('leaderboard-panel');
 const linksPanel = document.getElementById('links-panel');
+const loginPanel = document.getElementById('login-panel');
 
 function showTitleScreen(tab) {
     currentTitleTab = tab;
     // Show/hide each panel
-    lsOverlay.classList.toggle('visible', tab === 'levels');
-    lbPanel.classList.toggle('visible', tab === 'leaderboard');
+    lsOverlay.classList.toggle('visible',  tab === 'levels');
+    lbPanel.classList.toggle('visible',    tab === 'leaderboard');
     linksPanel.classList.toggle('visible', tab === 'links');
+    loginPanel.classList.toggle('visible', tab === 'login');
     // Launch bar only on level select
     lsLaunch.classList.toggle('visible', tab === 'levels');
     // Highlight active nav button
-    document.getElementById('nav-btn-levels').classList.toggle('active-tab', tab === 'levels');
+    document.getElementById('nav-btn-levels').classList.toggle('active-tab',      tab === 'levels');
     document.getElementById('nav-btn-leaderboard').classList.toggle('active-tab', tab === 'leaderboard');
-    document.getElementById('nav-btn-links').classList.toggle('active-tab', tab === 'links');
+    document.getElementById('nav-btn-links').classList.toggle('active-tab',       tab === 'links');
+    document.getElementById('nav-btn-login').classList.toggle('active-tab',       tab === 'login');
     // Lazy-load data for new tabs
     if (tab === 'leaderboard') loadLeaderboard();
     if (tab === 'links') buildLinksGrid();
+    if (tab === 'login') refreshLoginPanel();
     if (tab === 'levels') {
         rebuildGrid();
         updateLsBest();
@@ -879,6 +883,7 @@ function hideLevelSelect() {
     lsOverlay.classList.remove('visible');
     lbPanel.classList.remove('visible');
     linksPanel.classList.remove('visible');
+    loginPanel.classList.remove('visible');
     lsLaunch.classList.remove('visible');
     lsSearch.blur();
 }
@@ -1161,6 +1166,123 @@ function buildLinksGrid() {
         });
     });
 }
+
+// ──────────────────────────────────────────────────────────
+//  LOGIN SYSTEM
+// ──────────────────────────────────────────────────────────
+
+// Holds the logged-in username, or null if not logged in.
+// Persisted in sessionStorage so a page refresh logs out.
+let loggedInUser = sessionStorage.getItem('tmb_user') || null;
+
+// Cached logins data after first fetch
+let loginsData = null;
+
+async function fetchLogins() {
+    if (loginsData) return loginsData;
+    const res = await fetch('/data/logins.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    loginsData = await res.json();
+    return loginsData;
+}
+
+async function attemptLogin() {
+    const btn      = document.getElementById('login-submit');
+    const errEl    = document.getElementById('login-error');
+    const okEl     = document.getElementById('login-success');
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+
+    errEl.textContent = '';
+    okEl.textContent  = '';
+
+    if (!username || !password) {
+        errEl.textContent = '⚠ PLEASE ENTER BOTH FIELDS.';
+        return;
+    }
+
+    btn.disabled     = true;
+    btn.textContent  = 'CHECKING…';
+
+    try {
+        const data = await fetchLogins();
+
+        // Support both array [{username, password}] and object {username: password}
+        let match = false;
+        if (Array.isArray(data)) {
+            match = data.some(entry =>
+                (entry.username || entry.user || '').toLowerCase() === username.toLowerCase() &&
+                (entry.password || entry.pass || '') === password
+            );
+        } else {
+            // Object map: { "alice": "hunter2", ... }
+            const key = Object.keys(data).find(k => k.toLowerCase() === username.toLowerCase());
+            match = key !== undefined && data[key] === password;
+        }
+
+        if (match) {
+            loggedInUser = username;
+            sessionStorage.setItem('tmb_user', username);
+            okEl.textContent = `✓ WELCOME BACK, ${username.toUpperCase()}!`;
+            document.getElementById('login-password').value = '';
+            // Short pause so the success message reads, then refresh panel
+            setTimeout(() => refreshLoginPanel(), 900);
+        } else {
+            errEl.textContent = '✗ INCORRECT USERNAME OR PASSWORD.';
+        }
+    } catch (err) {
+        errEl.textContent = `⚠ COULD NOT REACH LOGIN SERVER.`;
+        console.error('Login fetch error:', err);
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = 'LOGIN';
+    }
+}
+
+function logoutUser() {
+    loggedInUser = null;
+    sessionStorage.removeItem('tmb_user');
+    document.getElementById('login-error').textContent   = '';
+    document.getElementById('login-success').textContent = '';
+    document.getElementById('login-username').value      = '';
+    document.getElementById('login-password').value      = '';
+    refreshLoginPanel();
+}
+
+// Sync the panel UI to the current login state
+function refreshLoginPanel() {
+    const formFields  = document.querySelectorAll('#login-card .login-field');
+    const submitBtn   = document.getElementById('login-submit');
+    const logoutRow   = document.getElementById('login-logout-row');
+    const usernameEl  = document.getElementById('login-username-display');
+    const navBtn      = document.getElementById('nav-btn-login');
+
+    if (loggedInUser) {
+        // Hide form, show logout row
+        formFields.forEach(el => el.style.display = 'none');
+        submitBtn.style.display = 'none';
+        logoutRow.classList.add('visible');
+        usernameEl.textContent = loggedInUser.toUpperCase();
+        navBtn.textContent     = `✓ ${loggedInUser.toUpperCase()}`;
+        navBtn.classList.add('logged-in');
+    } else {
+        // Show form, hide logout row
+        formFields.forEach(el => el.style.display = '');
+        submitBtn.style.display = '';
+        logoutRow.classList.remove('visible');
+        usernameEl.textContent = '';
+        navBtn.textContent     = '⚡ LOGIN';
+        navBtn.classList.remove('logged-in');
+    }
+}
+
+// Allow pressing Enter in the password field to submit
+document.getElementById('login-password').addEventListener('keydown', e => {
+    if (e.code === 'Enter') { e.preventDefault(); attemptLogin(); }
+});
+document.getElementById('login-username').addEventListener('keydown', e => {
+    if (e.code === 'Enter') { e.preventDefault(); document.getElementById('login-password').focus(); }
+});
 
 // ──────────────────────────────────────────────────────────
 //  COLLISION
