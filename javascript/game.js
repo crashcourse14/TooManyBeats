@@ -1079,7 +1079,7 @@ function getTitleBadgeHTML(playerName) {
     let cls = 't-custom';
     if (tl.includes('world record')) cls = 't-wr';
     else if (tl.includes('top 10') || tl.includes('top10')) cls = 't-top10';
-    else if (tl.includes('top 100') || tl.includes('top100')) cls = 't-top100';
+    else if (tl.includes('top 225') || tl.includes('top225')) cls = 't-top255';
 
     return `<span class="lb-title ${cls}">${title}</span>`;
 }
