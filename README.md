@@ -2,7 +2,7 @@
 Too Many Beats is a rythim game where you have to advoid obsticales of all difficulties.
 
 ## Game Version
-Update (Beta) v1.0
+Update (Beta) 1.0 - 3.3.26
 
 ## Leveling
 All levels can be programmed, and modified in /levels/. 
@@ -43,6 +43,6 @@ Seasonal Titles are given out to the top 225, 10, and the top number 1 players i
 Custom titles will be added by DEVELOPERS. Contributors are NOT allowed to add their own titles.
 
 ## Extra
-Do NOT sell these accounts
-Do NOT login into another player's account
-Do NOT give your self a custom title, UNLESS TOLD SO.
+- Do NOT sell these accounts
+- Do NOT login into another player's account
+- Do NOT give your self a custom title, UNLESS TOLD SO.
