@@ -2,14 +2,19 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Too Many Beats</title>
 <link rel="manifest" href="/manifest.json">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #000; overflow: hidden; font-family: 'Orbitron', monospace; cursor: none; }
-  canvas { display: block; }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { touch-action: none; overscroll-behavior: none; }
+  body { background: #000; overflow: hidden; font-family: 'Orbitron', monospace; cursor: none; -webkit-user-select: none; user-select: none; }
+  @media (pointer: coarse) { body { cursor: auto; } #custom-cursor { display: none !important; } }
+  canvas { display: block; touch-action: none; }
 
   /* ── Loading ── */
   #loading-screen {
@@ -139,47 +144,53 @@
   #top-nav {
     position: fixed; top: 0; left: 0; right: 0;
     display: flex; align-items: center; justify-content: flex-end;
-    padding: 12px 20px; gap: 8px; z-index: 25;
-    pointer-events: none; opacity: 0; transition: opacity 0.3s;
-    background: linear-gradient(rgba(0,0,0,0.6) 0%, transparent 100%);
+    flex-wrap: wrap; padding: 10px 14px; gap: 6px; z-index: 25;
+    pointer-events: none; opacity: 0;
+    transition: opacity 0.35s ease;
+    background: linear-gradient(rgba(0,0,0,0.65) 0%, transparent 100%);
   }
   #top-nav.visible { pointer-events: all; opacity: 1; }
   .nav-btn {
     font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px;
     color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.14); border-radius: 6px; padding: 7px 16px;
-    cursor: pointer; transition: all 0.15s; text-transform: uppercase;
+    border: 1px solid rgba(255,255,255,0.14); border-radius: 6px; padding: 8px 14px;
+    cursor: pointer; transition: all 0.15s; text-transform: uppercase; min-height: 38px;
   }
   .nav-btn:hover { color: white; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); }
   .nav-btn.active-tab { color: #00ffff; border-color: rgba(0,255,255,0.5); background: rgba(0,255,255,0.08); box-shadow: 0 0 14px rgba(0,255,255,0.15); }
+  @media (max-width: 500px) { .nav-btn { font-size: 9px; padding: 7px 9px; letter-spacing: 1px; } }
 
   /* ══ LEVEL SELECT ══ */
   #level-select {
     position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
-    z-index: 20; pointer-events: none; opacity: 0; transition: opacity 0.3s;
+    z-index: 20; pointer-events: none; opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
     padding-top: 54px;
   }
-  #level-select.visible { pointer-events: all; opacity: 1; }
+  #level-select.visible { pointer-events: all; opacity: 1; transform: translateY(0); }
   #ls-title { margin-top: 10px; font-family: 'Orbitron', monospace; font-size: clamp(22px, 4vw, 48px); font-weight: 900; color: white; letter-spacing: 4px; text-shadow: 0 0 30px cyan, 0 0 60px rgba(0,255,255,0.25); pointer-events: none; line-height: 1; }
-  #ls-sub { margin-top: 4px; font-family: 'Share Tech Mono', monospace; font-size: 20px; letter-spacing: 3px; color: rgba(255,255,255,0.35); pointer-events: none; }
+  #ls-sub { margin-top: 4px; font-family: 'Share Tech Mono', monospace; font-size: clamp(13px, 2vw, 20px); letter-spacing: 3px; color: rgba(255,255,255,0.35); pointer-events: none; }
   #ls-search-wrap { margin-top: 14px; position: relative; width: min(420px, 90vw); }
   #ls-search-wrap::before { content: '⌕'; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.35); font-size: 18px; pointer-events: none; }
   #ls-search { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 10px 14px 10px 40px; color: white; font-family: 'Share Tech Mono', monospace; font-size: 13px; letter-spacing: 2px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; cursor: text; }
   #ls-search::placeholder { color: rgba(255,255,255,0.2); }
   #ls-search:focus { border-color: rgba(0,255,255,0.5); box-shadow: 0 0 16px rgba(0,255,255,0.15); }
   #ls-search-count { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-family: 'Share Tech Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.25); pointer-events: none; }
-  #ls-grid-wrap { margin-top: 12px; width: min(960px, 96vw); flex: 1; overflow-y: auto; overflow-x: hidden; padding: 4px 6px 80px; scroll-behavior: smooth; }
+  #ls-grid-wrap { margin-top: 12px; width: min(960px, 96vw); flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overflow-x: hidden; padding: 4px 6px 140px; scroll-behavior: smooth; }
   #ls-grid-wrap::-webkit-scrollbar { width: 4px; }
   #ls-grid-wrap::-webkit-scrollbar-track { background: transparent; }
   #ls-grid-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
   #ls-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
-  .ls-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 14px 14px 12px; cursor: pointer; transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s, background 0.15s; display: flex; flex-direction: column; gap: 8px; position: relative; overflow: hidden; min-height: 230px; }
+  @media (max-width: 480px) { #ls-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+  .ls-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 14px 14px 12px; cursor: pointer; transition: transform 0.2s ease, border-color 0.2s, box-shadow 0.2s, background 0.2s; display: flex; flex-direction: column; gap: 8px; position: relative; overflow: hidden; min-height: 200px; }
   .ls-card:hover { transform: translateY(-3px); background: rgba(255,255,255,0.07); }
+  .ls-card:active { transform: scale(0.97) translateY(0); }
   .ls-card.selected { border-width: 2px; transform: translateY(-4px); }
   .ls-card::after { content: ''; position: absolute; inset: 0; border-radius: 12px; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
   .ls-card.selected::after { opacity: 1; }
   .ls-card-name { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700; color: white; line-height: 1.3; word-break: break-word; }
-  .ls-card-preview { flex: 1; border-radius: 6px; overflow: hidden; min-height: 52px; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 6px 8px; background: rgba(0,0,0,0.25); }
+  .ls-card-preview { flex: 1; border-radius: 6px; overflow: hidden; min-height: 44px; display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 6px 8px; background: rgba(0,0,0,0.25); }
   .ls-lane-row { height: 14px; border-radius: 3px; display: flex; align-items: center; padding-left: 4px; }
   .ls-ship { width: 12px; height: 8px; border-radius: 2px; }
   .ls-stats { display: flex; flex-direction: column; gap: 3px; }
@@ -189,19 +200,42 @@
   .ls-song-val { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom; font-size: 9px; }
   .ls-beat-badge { font-family: 'Share Tech Mono', monospace; font-size: 8px; letter-spacing: 1px; color: #ff88ff; background: rgba(255,0,200,0.12); border: 1px solid rgba(255,0,200,0.3); border-radius: 4px; padding: 2px 6px; text-align: center; }
   .ls-no-results { grid-column: 1/-1; text-align: center; font-family: 'Share Tech Mono', monospace; font-size: 13px; color: rgba(255,255,255,0.25); padding: 40px 0; letter-spacing: 2px; }
-  #ls-launch { position: fixed; bottom: 0; left: 0; right: 0; padding: 16px 0 20px; display: flex; flex-direction: column; align-items: center; gap: 6px; background: linear-gradient(transparent, rgba(0,0,0,0.95) 40%); pointer-events: none; z-index: 21; opacity: 0; transition: opacity 0.3s; }
-  #ls-launch.visible { opacity: 1; }
+
+  /* launch bar */
+  #ls-launch { position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 0 20px; display: flex; flex-direction: column; align-items: center; gap: 5px; background: linear-gradient(transparent, rgba(0,0,0,0.97) 38%); pointer-events: none; z-index: 21; opacity: 0; transition: opacity 0.35s ease; }
+  #ls-launch.visible { opacity: 1; pointer-events: all; }
   #ls-launch-hint { font-family: 'Orbitron', monospace; font-size: 15px; font-weight: 700; color: white; letter-spacing: 3px; }
   #ls-launch-sub { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; color: rgba(255,255,255,0.3); }
+  /* Mobile launch button — hidden on desktop, shown on touch devices */
+  #ls-mobile-launch {
+    display: none;
+    font-family: 'Orbitron', monospace; font-size: 14px; font-weight: 700; letter-spacing: 3px;
+    color: #000; background: #00ffff; border: none; border-radius: 10px;
+    padding: 15px 48px; cursor: pointer;
+    box-shadow: 0 0 28px rgba(0,255,255,0.45);
+    transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+  }
+  #ls-mobile-launch:active { transform: scale(0.96); background: #55eeff; }
+  @media (pointer: coarse) {
+    #ls-launch-hint { display: none; }
+    #ls-launch-sub  { display: none; }
+    #ls-mobile-launch { display: block; }
+  }
   #ls-best { font-family: 'Share Tech Mono', monospace; font-size: 10px; color: rgba(255,255,0,0.5); letter-spacing: 1px; }
   #ls-version { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; color: rgba(255,255,255,0.2); }
 
-  /* ══ SHARED PANEL (leaderboard + links) ══ */
-  .side-panel { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; z-index: 20; pointer-events: none; opacity: 0; transition: opacity 0.3s; padding-top: 68px; }
-  .side-panel.visible { pointer-events: all; opacity: 1; }
+  /* ══ SHARED PANEL — smooth slide+fade ══ */
+  .side-panel {
+    position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+    z-index: 20; pointer-events: none; opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    padding-top: 68px;
+  }
+  .side-panel.visible { pointer-events: all; opacity: 1; transform: translateY(0); }
   .panel-heading { font-family: 'Orbitron', monospace; font-size: clamp(20px, 3.5vw, 40px); font-weight: 900; color: white; letter-spacing: 4px; line-height: 1; }
   .panel-sub { margin-top: 5px; font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 3px; color: rgba(255,255,255,0.3); }
-  .panel-body { margin-top: 20px; width: min(780px, 94vw); flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: 40px; }
+  .panel-body { margin-top: 20px; width: min(780px, 94vw); flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overflow-x: hidden; padding-bottom: 40px; }
   .panel-body::-webkit-scrollbar { width: 4px; }
   .panel-body::-webkit-scrollbar-track { background: transparent; }
   .panel-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
@@ -281,6 +315,98 @@
   .link-card-title { font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700; color: white; }
   .link-card-desc { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1px; line-height: 1.6; color: rgba(255,255,255,0.4); }
   .link-card-url { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,0.2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: auto; }
+
+  /* ══ NEWS SCREEN ══ */
+  #news-screen {
+    position: fixed; inset: 0; background: #000;
+    display: flex; flex-direction: column; align-items: center;
+    z-index: 88; opacity: 0; pointer-events: none;
+    transition: opacity 0.5s ease;
+    overflow: hidden;
+  }
+  #news-screen.visible { opacity: 1; pointer-events: all; }
+  #news-screen.hidden  { opacity: 0; pointer-events: none; }
+
+  #news-header {
+    flex-shrink: 0; width: 100%;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 6px; padding: 32px 20px 18px;
+    background: linear-gradient(rgba(0,100,200,0.1), transparent);
+  }
+  #news-eyebrow {
+    font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 4px;
+    color: #00ffff; background: rgba(0,255,255,0.09);
+    border: 1px solid rgba(0,255,255,0.3); border-radius: 4px; padding: 4px 14px;
+  }
+  #news-title {
+    font-family: 'Orbitron', monospace; font-size: clamp(26px, 5vw, 50px); font-weight: 900;
+    color: white; letter-spacing: 4px;
+    text-shadow: 0 0 30px cyan, 0 0 70px rgba(0,255,255,0.2);
+  }
+  #news-season-tag {
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 3px;
+    color: rgba(255,255,255,0.35);
+  }
+
+  #news-feed {
+    flex: 1; width: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 12px; padding: 16px 16px 0;
+  }
+  #news-feed::-webkit-scrollbar { width: 3px; }
+  #news-feed::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+
+  .news-card {
+    width: min(660px, 100%);
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 14px; padding: 18px 20px;
+    transition: background 0.2s ease;
+  }
+  .news-card:hover { background: rgba(255,255,255,0.07); }
+  .news-card-top { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 10px; }
+  .news-card-icon { font-size: 24px; line-height: 1; flex-shrink: 0; margin-top: 2px; }
+  .news-card-meta { display: flex; flex-direction: column; gap: 4px; }
+  .news-tag {
+    font-family: 'Share Tech Mono', monospace; font-size: 8px; letter-spacing: 2px;
+    text-transform: uppercase; padding: 2px 9px; border-radius: 4px; border: 1px solid;
+    width: fit-content;
+  }
+  .news-tag.t-new    { color: #44ff88; border-color: rgba(68,255,136,0.4); background: rgba(68,255,136,0.07); }
+  .news-tag.t-update { color: #00ffff; border-color: rgba(0,255,255,0.4);  background: rgba(0,255,255,0.07); }
+  .news-tag.t-event  { color: #ff88ff; border-color: rgba(255,136,255,0.4);background: rgba(255,136,255,0.07); }
+  .news-tag.t-fix    { color: #ffcc44; border-color: rgba(255,204,68,0.4); background: rgba(255,204,68,0.07); }
+  .news-card-date { font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 1px; color: rgba(255,255,255,0.22); }
+  .news-card-headline {
+    font-family: 'Orbitron', monospace; font-size: clamp(13px, 2.5vw, 16px); font-weight: 700;
+    color: white; margin-bottom: 8px; line-height: 1.3;
+  }
+  .news-card-body {
+    font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 0.5px;
+    line-height: 1.9; color: rgba(255,255,255,0.5);
+  }
+  .news-card-body strong { color: rgba(255,255,255,0.82); }
+
+  #news-footer {
+    flex-shrink: 0; width: 100%;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    padding: 14px 0 24px;
+    background: linear-gradient(transparent, rgba(0,0,0,0.98) 55%);
+  }
+  #news-continue-btn {
+    font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700; letter-spacing: 3px;
+    color: #000; background: #00ffff; border: none; border-radius: 10px;
+    padding: 15px 50px; cursor: pointer;
+    box-shadow: 0 0 26px rgba(0,255,255,0.4);
+    transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+  }
+  #news-continue-btn:hover { background: #55eeff; transform: translateY(-2px); box-shadow: 0 0 40px rgba(0,255,255,0.55); }
+  #news-continue-btn:active { transform: scale(0.97); }
+  #news-skip-btn {
+    font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px;
+    color: rgba(255,255,255,0.2); background: none; border: none; cursor: pointer;
+    transition: color 0.15s;
+  }
+  #news-skip-btn:hover { color: rgba(255,255,255,0.45); }
 
   /* ══ LOGIN PANEL ══ */
   #login-panel {
@@ -458,6 +584,72 @@
   <button id="cw-skip" onclick="dismissContentWarning()">skip</button>
 </div>
 
+<!-- ══ NEWS SCREEN ══ -->
+<div id="news-screen">
+  <div id="news-header">
+    <div id="news-eyebrow">WHAT'S NEW</div>
+    <div id="news-title">TOO MANY BEATS</div>
+    <div id="news-season-tag">SEASON 1 · UPDATE LOG</div>
+  </div>
+
+  <div id="news-feed">
+
+    <div class="news-card">
+      <div class="news-card-top">
+        <div class="news-card-icon">🏆</div>
+        <div class="news-card-meta">
+          <span class="news-tag t-new">NEW</span>
+          <span class="news-card-date">Season 1 Launch</span>
+        </div>
+      </div>
+      <div class="news-card-headline">Season 1 Is Live!</div>
+      <div class="news-card-body">Welcome to <strong>Season 1</strong> of Too Many Beats. Compete across 22+ levels, chase your best score, and climb the leaderboard. Top players will earn exclusive <strong>titles</strong> displayed on the leaderboard for all to see.</div>
+    </div>
+
+    <div class="news-card">
+      <div class="news-card-top">
+        <div class="news-card-icon">📱</div>
+        <div class="news-card-meta">
+          <span class="news-tag t-update">UPDATE</span>
+          <span class="news-card-date">Beta 1.23026</span>
+        </div>
+      </div>
+      <div class="news-card-headline">Mobile Support</div>
+      <div class="news-card-body">Too Many Beats is now fully playable on phones and tablets. <strong>Swipe up or down</strong> to switch lanes while playing. The level select and all menus are touch-optimised with a dedicated launch button.</div>
+    </div>
+
+    <div class="news-card">
+      <div class="news-card-top">
+        <div class="news-card-icon">🎵</div>
+        <div class="news-card-meta">
+          <span class="news-tag t-update">UPDATE</span>
+          <span class="news-card-date">Beta 1.23026</span>
+        </div>
+      </div>
+      <div class="news-card-headline">Beat Drop System</div>
+      <div class="news-card-body">Levels with a <strong>⚡ Beat Drop</strong> now ramp up speed and visual intensity mid-song. Survive the drop and ride the surge — your combo multiplier keeps climbing the longer you last.</div>
+    </div>
+
+    <div class="news-card">
+      <div class="news-card-top">
+        <div class="news-card-icon">💬</div>
+        <div class="news-card-meta">
+          <span class="news-tag t-event">COMMUNITY</span>
+          <span class="news-card-date">Ongoing</span>
+        </div>
+      </div>
+      <div class="news-card-headline">Join the Community</div>
+      <div class="news-card-body">Share scores, report bugs, and get a player account on the <strong>Stoat community server</strong>. Find the link in the Links tab. Accounts are created manually — drop a message and you'll be added.</div>
+    </div>
+
+  </div><!-- /#news-feed -->
+
+  <div id="news-footer">
+    <button id="news-continue-btn" onclick="dismissNews()">LET'S PLAY ▶</button>
+    <button id="news-skip-btn"     onclick="dismissNews()">skip</button>
+  </div>
+</div><!-- /#news-screen -->
+
 <div id="custom-cursor"></div>
 
 <div id="ui">
@@ -576,8 +768,9 @@
 
 <!-- Launch bar -->
 <div id="ls-launch">
-  <div id="ls-launch-hint">PRESS SPACE TO LAUNCH</div>
-  <div id="ls-launch-sub">click to select  ·  double-click or SPACE to launch  ·  ←→ to navigate</div>
+  <div id="ls-launch-hint">CLICK LEVEL ONCE TO SELECT · SPACE OR DOUBLE-CLICK TO LAUNCH</div>
+  <div id="ls-launch-sub">single-click to select  ·  double-click or SPACE to launch  ·  ←→ to navigate</div>
+  <button id="ls-mobile-launch" onclick="mobileLaunch()">▶ LAUNCH LEVEL</button>
   <div id="ls-best"></div>
   <div id="ls-version">Update (Beta) 1.23026</div>
 </div>

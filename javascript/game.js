@@ -101,24 +101,34 @@ function retryAudio() {
 
 function showContentWarning() {
     const cw = document.getElementById('content-warning');
-    if (!cw) {
-        showLevelSelect();
-        return;
-    }
-    // Fade in after a short pause so loading screen has cleared
+    if (!cw) { showNewsScreen(); return; }
     setTimeout(() => cw.classList.add('visible'), 80);
 }
 
 function dismissContentWarning() {
     const cw = document.getElementById('content-warning');
-    if (!cw) {
-        showLevelSelect();
-        return;
-    }
+    if (!cw) { showNewsScreen(); return; }
     cw.classList.remove('visible');
     cw.classList.add('hidden');
-    // Small delay so the fade-out plays before level select appears
-    setTimeout(() => showLevelSelect(), 500);
+    setTimeout(() => showNewsScreen(), 480);
+}
+
+// ──────────────────────────────────────────────────────────
+//  NEWS SCREEN
+// ──────────────────────────────────────────────────────────
+
+function showNewsScreen() {
+    const ns = document.getElementById('news-screen');
+    if (!ns) { showLevelSelect(); return; }
+    setTimeout(() => ns.classList.add('visible'), 60);
+}
+
+function dismissNews() {
+    const ns = document.getElementById('news-screen');
+    if (!ns) { showLevelSelect(); return; }
+    ns.classList.remove('visible');
+    ns.classList.add('hidden');
+    setTimeout(() => showLevelSelect(), 480);
 }
 
 // ──────────────────────────────────────────────────────────
@@ -869,13 +879,22 @@ function showTitleScreen(tab) {
     if (tab === 'levels') {
         rebuildGrid();
         updateLsBest();
-        setTimeout(() => lsSearch.focus(), 80);
+        // Only auto-focus search on non-touch devices
+        if (window.matchMedia('(pointer: fine)').matches) {
+            setTimeout(() => lsSearch.focus(), 80);
+        }
     }
 }
 
 function showLevelSelect() {
     topNav.classList.add('visible');
     showTitleScreen('levels');
+}
+
+// Called by the mobile ▶ LAUNCH LEVEL button
+function mobileLaunch() {
+    hideLevelSelect();
+    startGame();
 }
 
 function hideLevelSelect() {
@@ -962,8 +981,14 @@ function rebuildGrid() {
       ${lvl.beatDrop?`<div class="ls-beat-badge">⚡ DROP @ ${lvl.beatDrop}s</div>`:''}`;
         card.addEventListener('click', e => {
             e.stopPropagation();
-            activateLevel(idx);
-            rebuildGrid();
+            if (idx === currentLevelIndex) {
+                // Second tap/click on the already-selected card → launch
+                hideLevelSelect();
+                startGame();
+            } else {
+                activateLevel(idx);
+                rebuildGrid();
+            }
         });
         card.addEventListener('dblclick', e => {
             e.stopPropagation();
@@ -1077,7 +1102,7 @@ function getTitleBadgeHTML(playerName) {
     const tl = title.toLowerCase();
 
     let cls = 't-custom';
-    if (tl.includes('top player')) cls = 't-wr';
+    if (tl.includes('top player')) cls = 't-topPlayer';
     else if (tl.includes('top 10') || tl.includes('top10')) cls = 't-top10';
     else if (tl.includes('top 225') || tl.includes('top225')) cls = 't-top255';
 
@@ -1737,34 +1762,42 @@ window.addEventListener('keydown', e => {
 });
 
 let touchStartY = null,
-    touchStartX = null;
+    touchStartX = null,
+    touchStartTime = null;
+
 window.addEventListener('touchstart', e => {
-    touchStartY = e.touches[0].clientY;
-    touchStartX = e.touches[0].clientX;
-}, {
-    passive: true
-});
+    touchStartY    = e.touches[0].clientY;
+    touchStartX    = e.touches[0].clientX;
+    touchStartTime = Date.now();
+}, { passive: true });
+
 window.addEventListener('touchend', e => {
-    if (state === 'title') return;
+    // If the touch target is inside a UI panel or button, let it handle itself
+    const target = e.target;
+    const isUI = target.closest('#top-nav, #level-select, #leaderboard-panel, #links-panel, #login-panel, #ls-launch, #news-screen, #content-warning, #loading-screen');
+    if (isUI) { touchStartY = touchStartX = touchStartTime = null; return; }
+
+    if (state === 'title') { touchStartY = touchStartX = touchStartTime = null; return; }
+
+    const dy       = e.changedTouches[0].clientY - (touchStartY ?? 0);
+    const dx       = e.changedTouches[0].clientX - (touchStartX ?? 0);
+    const elapsed  = Date.now() - (touchStartTime ?? 0);
+    const isTap    = Math.abs(dy) < 12 && Math.abs(dx) < 12 && elapsed < 300;
+    const isSwipe  = Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 22;
+
     if (state === 'dead') {
         stopAudio();
         loadAudio(currentLevel && currentLevel.song);
         startGame();
-        return;
-    }
-    if (state === 'levelcomplete') {
+    } else if (state === 'levelcomplete') {
         advanceToNextLevel();
-        return;
+    } else if (state === 'playing') {
+        if (isSwipe)      movePlayer(dy > 0 ? 1 : -1);
+        else if (isTap)   movePlayer(e.changedTouches[0].clientY > canvas.height / 2 ? 1 : -1);
     }
-    if (touchStartY === null) return;
-    const dy = e.changedTouches[0].clientY - touchStartY,
-        dx = e.changedTouches[0].clientX - touchStartX;
-    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 20) movePlayer(dy > 0 ? 1 : -1);
-    touchStartY = null;
-    touchStartX = null;
-}, {
-    passive: true
-});
+
+    touchStartY = touchStartX = touchStartTime = null;
+}, { passive: true });
 
 canvas.addEventListener('click', e => {
     if (state === 'title') return;

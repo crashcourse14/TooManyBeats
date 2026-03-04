@@ -34,9 +34,9 @@ Just because the login data is PUBLIC DOES NOT MEAN that you can LOG INTO ANOTHE
 Speaking of login data being public; DO NOT make an account using PERSONAL login data. Just create one that you'll remember and one that doesnt matter if someone finds it. 
 
 ## Seasonal Titles
-Seasonal Titles are given out to the top 100, 10, and the top number 1 players in the world. These titles include:
+Seasonal Titles are given out to the top 225, 10, and the top number 1 players in the world. These titles include:
 
-- Season # World Record Holder (White)
+- Season # Top Player (White)
 - Season # Top 10 (Red)
 - Season # Top 215 (Gold)
 
