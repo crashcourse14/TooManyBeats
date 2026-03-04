@@ -40,6 +40,8 @@ Seasonal Titles are given out to the top 225, 10, and the top number 1 players i
 - Season # Top 10 (Red)
 - Season # Top 215 (Gold)
 
+- (There will be more titles soon)
+
 Custom titles will be added by DEVELOPERS. Contributors are NOT allowed to add their own titles.
 
 ## Extra
