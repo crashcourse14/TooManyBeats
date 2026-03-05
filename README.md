@@ -53,3 +53,4 @@ Custom titles will be added by DEVELOPERS. Contributors are NOT allowed to add t
 - We will get a server when we can afford one
 - We will update the game to support PHP like we did before
 - Game will support auto-update leaderboard, as well as independent account creation
+- Changeable titles (From your profile)
