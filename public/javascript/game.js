@@ -1103,9 +1103,29 @@ async function submitScore(runScore, peakCombo) {
 function getTitleBadgeHTML(entry) {
     const titleId = entry.title;
     if (!titleId) return '';
-    const def   = (window._titlesCache || []).find(t => t.id === titleId);
-    const label = def ? def.label : titleId;
-    const cls   = def ? def.class : 't-custom';
+
+    let cls = 't-custom';
+    let label = titleId;
+
+    if (titleId.includes('Top Player')) {
+        cls = 't-TopPlayer';
+    } else if (titleId.includes('top10')) {
+        cls = 't-top10';
+        label = 'Top 10';
+    } else if (titleId.includes('top225') || titleId.includes('top100')) {
+        cls = 't-top225';
+        label = 'Top 225';
+    } else if (titleId.includes('world_record')) {
+        cls = 't-wr';
+        label = 'World Record';
+    } else if (titleId.includes('season1_pioneer')) {
+        cls = 't-new';
+        label = 'Season 1 Pioneer';
+    } else if (titleId.includes('custom')) {
+        cls = 't-custom';
+        label = 'Fan Favourite';
+    }
+
     return `<span class="lb-title ${cls}">${label}</span>`;
 }
 
@@ -1155,6 +1175,12 @@ function renderLeaderboard() {
             }) : '';
         const meta = [dateStr, entry.combo ? `x${entry.combo} COMBO` : ''].filter(Boolean).join('  ·  ');
         const barPct = Math.round(((entry.score || 0) / maxScore) * 100);
+        // Assign title based on rank if not provided
+        if (!entry.title) {
+            if (rank === 1) entry.title = 'Season 1 Top Player';
+            else if (rank <= 10) entry.title = 'top10';
+            else if (rank <= 225) entry.title = 'top225';
+        }
         const titleHTML = getTitleBadgeHTML(entry);
 
         return `
