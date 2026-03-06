@@ -1,0 +1,24 @@
+# ── Dependencies ──────────────────────────────────────────
+node_modules/
+
+# ── Next.js build output ──────────────────────────────────
+.next/
+out/
+
+# ── Environment variables (contains secrets) ──────────────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ── Data files (live server data, not for Git) ────────────
+data/users.json
+data/leaderboard.json
+
+# ── OS / editor junk ──────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
