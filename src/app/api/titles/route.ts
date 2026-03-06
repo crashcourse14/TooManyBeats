@@ -28,17 +28,17 @@ import { readTitles, readUsers, writeUsers } from '@/lib/db';
 
 // ── GET /api/titles ────────────────────────────────────────────
 export async function GET() {
-  const allTitles = readTitles();
+  const allTitles = await readTitles();
   const session   = await getSession();
 
   let activeTitle: string | null = null;
   let unlocked: string[]         = [];
 
   if (session.user) {
-    const users  = readUsers();
+    const users  = await readUsers();
     const record = users.find(u => u.username.toLowerCase() === session.user!.toLowerCase());
     if (record) {
-      activeTitle = record.activeTitle ?? null;
+      activeTitle = record.active_title ?? null;
       unlocked    = record.titles      ?? [];
     }
   }
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unknown action.' }, { status: 400 });
   }
 
-  const users = readUsers();
+  const users = await readUsers();
   const idx   = users.findIndex(u => u.username.toLowerCase() === session.user!.toLowerCase());
 
   if (idx === -1) {
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
 
   // Validate title if not clearing
   if (newTitle !== '') {
-    const allTitles   = readTitles();
+    const allTitles   = await readTitles();
     const globalIds   = allTitles.map(t => t.id);
     const playerTitles = users[idx].titles ?? [];
 
@@ -82,8 +82,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  users[idx].activeTitle = newTitle === '' ? null : newTitle;
-  writeUsers(users);
+  users[idx].active_title = newTitle === '' ? null : newTitle;
+  await writeUsers(users);
 
-  return NextResponse.json({ ok: true, activeTitle: users[idx].activeTitle });
+  return NextResponse.json({ ok: true, activeTitle: users[idx].active_title });
 }

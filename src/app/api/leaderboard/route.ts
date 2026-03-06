@@ -17,11 +17,11 @@ import {
 
 // ── GET /api/leaderboard ───────────────────────────────────────
 export async function GET() {
-  const entries = readLeaderboard();
+  const entries = await readLeaderboard();
 
   // Attach each player's active title
-  const users    = readUsers();
-  const titleMap = new Map(users.map(u => [u.username.toLowerCase(), u.activeTitle ?? null]));
+  const users    = await readUsers();
+  const titleMap = new Map(users.map(u => [u.username.toLowerCase(), u.active_title ?? null]));
 
   const withTitles: LeaderboardEntry[] = entries.map(e => ({
     ...e,
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Score must be a positive integer.' }, { status: 400 });
   }
 
-  const entries  = readLeaderboard();
+  const entries  = await readLeaderboard();
   const username = session.user;
 
   const idx = entries.findIndex(
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
   }
 
   entries.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-  writeLeaderboard(entries);
+  await writeLeaderboard(entries);
 
   return NextResponse.json({ ok: true, newTotal });
 }

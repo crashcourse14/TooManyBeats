@@ -21,11 +21,11 @@ export async function GET(req: NextRequest) {
     if (!session.user) {
       return NextResponse.json({ user: null, title: null });
     }
-    const users  = readUsers();
+    const users  = await readUsers();
     const record = users.find(u => u.username.toLowerCase() === session.user!.toLowerCase());
     return NextResponse.json({
       user:  session.user,
-      title: record?.activeTitle ?? null,
+      title: record?.active_title ?? null,
     });
   }
 
@@ -46,11 +46,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Username and password are required.' }, { status: 400 });
     }
 
-    const users = readUsers();
+    const users = await readUsers();
     const found = users.find(u => u.username.toLowerCase() === username.toLowerCase());
 
     // if we have no user or the stored hash is missing/invalid, bail out
-    if (!found || !found.passwordHash || !(await bcrypt.compare(password, found.passwordHash))) {
+    if (!found || !found.password_hash || !(await bcrypt.compare(password, found.password_hash))) {
       return NextResponse.json({ error: 'Incorrect username or password.' }, { status: 401 });
     }
 
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
     session.user  = found.username;
     await session.save();
 
-    return NextResponse.json({ ok: true, user: found.username, title: found.activeTitle ?? null });
+    return NextResponse.json({ ok: true, user: found.username, title: found.active_title ?? null });
   }
 
   // ── register ───────────────────────────────────────────────
@@ -79,20 +79,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Password must be at least 6 characters.' }, { status: 400 });
     }
 
-    const users = readUsers();
+    const users = await readUsers();
     if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
       return NextResponse.json({ error: 'That username is already taken.' }, { status: 409 });
     }
 
     const newUser = {
       username,
-      passwordHash: await bcrypt.hash(password, 12),
-      activeTitle:  null as string | null,
+      password_hash: await bcrypt.hash(password, 12),
+      active_title:  null as string | null,
       titles:       [] as string[],
-      createdAt:    new Date().toISOString(),
+      created_at:    new Date().toISOString(),
     };
 
-    writeUsers([...users, newUser]);
+    await writeUsers([...users, newUser]);
 
     const session = await getSession();
     session.user  = username;
