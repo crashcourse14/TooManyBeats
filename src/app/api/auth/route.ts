@@ -49,7 +49,8 @@ export async function POST(req: NextRequest) {
     const users = readUsers();
     const found = users.find(u => u.username.toLowerCase() === username.toLowerCase());
 
-    if (!found || !(await bcrypt.compare(password, found.passwordHash))) {
+    // if we have no user or the stored hash is missing/invalid, bail out
+    if (!found || !found.passwordHash || !(await bcrypt.compare(password, found.passwordHash))) {
       return NextResponse.json({ error: 'Incorrect username or password.' }, { status: 401 });
     }
 

@@ -231,7 +231,9 @@ let state = 'title',
     targetY = 0;
 let score = 0,
     bestScore = parseInt(localStorage.getItem('neonshift_best') || '0');
+// track the highest combo reached during a run for leaderboard metadata
 let combo = 1,
+    peakCombo = 1,
     comboTimer = 0,
     frame = 0,
     speed = 5;
@@ -814,15 +816,6 @@ function drawLevelComplete() {
         ctx.fillStyle = 'rgba(255,255,255,0.35)';
         ctx.font = '10px Share Tech Mono, monospace';
         ctx.fillText(`${next.numLanes||3} LANES  ·  ${spawnRateLabel(next.spawnRate||90)} DIFFICULTY`, cx, boxY + 56);
-        const elapsed = (performance.now() - levelCompleteTime) / 1000,
-            pct = Math.min(elapsed / LEVEL_COMPLETE_DELAY, 1);
-        ctx.fillStyle = 'rgba(255,255,255,0.08)';
-        ctx.fillRect(boxX, boxY + boxH + 10, boxW, 3);
-        ctx.fillStyle = hsl((globalHue + 60) % 360);
-        ctx.shadowColor = hsl((globalHue + 60) % 360);
-        ctx.shadowBlur = 8;
-        ctx.fillRect(boxX, boxY + boxH + 10, boxW * pct, 3);
-        ctx.shadowBlur = 0;
         const pa = 0.5 + Math.sin(frame * 0.06) * 0.35;
         ctx.globalAlpha = pa;
         ctx.fillStyle = 'white';
@@ -1081,14 +1074,12 @@ async function refreshLeaderboard() {
     }
 }
 
-// Submit score to PHP backend. Called on die() and completeLevel().
 async function submitScore(runScore, peakCombo) {
     if (!loggedInUser || runScore <= 0) return;
     try {
         const res = await fetch('/api/leaderboard', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
                 score: runScore,
                 level: currentLevel ? currentLevel.name : '',
                 combo: peakCombo,
@@ -1097,45 +1088,20 @@ async function submitScore(runScore, peakCombo) {
         const data = await res.json();
         if (data.ok) {
             await refreshLeaderboard();
-            showToast(`+${runScore.toLocaleString()} SAVED · TOTAL: ${(data.newTotal||runScore).toLocaleString()}`);
+            showToast(`+${runScore.toLocaleString()} SAVED · TOTAL: ${(data.newTotal || runScore).toLocaleString()}`);
         }
     } catch (e) {
         console.warn('Score submit failed:', e.message);
     }
 }
 
-// Build title badge HTML from leaderboard entry (title field returned by PHP)
 function getTitleBadgeHTML(entry) {
     const titleId = entry.title;
     if (!titleId) return '';
-    const def = (window._titlesCache || []).find(t => t.id === titleId);
+    const def   = (window._titlesCache || []).find(t => t.id === titleId);
     const label = def ? def.label : titleId;
     const cls   = def ? def.class : 't-custom';
     return `<span class="lb-title ${cls}">${label}</span>`;
-}
-
-function showToast(msg) {
-    let t = document.getElementById('tmb-toast');
-    if (!t) {
-        t = document.createElement('div');
-        t.id = 'tmb-toast';
-        Object.assign(t.style, {
-            position:'fixed', bottom:'90px', left:'50%',
-            transform:'translateX(-50%) translateY(14px)',
-            background:'rgba(0,255,180,0.1)', border:'1px solid rgba(0,255,180,0.4)',
-            color:'#00ffcc', fontFamily:"'Share Tech Mono',monospace",
-            fontSize:'11px', letterSpacing:'1.5px', padding:'10px 22px',
-            borderRadius:'8px', zIndex:'9998', opacity:'0',
-            pointerEvents:'none', whiteSpace:'nowrap',
-            transition:'opacity 0.3s ease, transform 0.3s ease',
-            textShadow:'0 0 10px rgba(0,255,180,0.6)',
-        });
-        document.body.appendChild(t);
-    }
-    t.textContent = msg;
-    requestAnimationFrame(() => { t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)'; });
-    clearTimeout(t._tmr);
-    t._tmr = setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(10px)'; }, 3500);
 }
 
 function renderLeaderboard() {
@@ -1184,7 +1150,7 @@ function renderLeaderboard() {
             }) : '';
         const meta = [dateStr, entry.combo ? `x${entry.combo} COMBO` : ''].filter(Boolean).join('  ·  ');
         const barPct = Math.round(((entry.score || 0) / maxScore) * 100);
-        const titleHTML = getTitleBadgeHTML(entry);
+        const titleHTML = getTitleBadgeHTML(name);
 
         return `
       <div class="lb-row${rankClass}">
@@ -1255,14 +1221,14 @@ function buildLinksGrid() {
 }
 
 // ──────────────────────────────────────────────────────────
-//  AUTH  (Next.js session backend)
+//  AUTH + PROFILE  (Next.js API backend)
 // ──────────────────────────────────────────────────────────
 
-let loggedInUser  = null;   // set after PHP session check
-let loginsData    = null;   // kept for legacy compat — unused by new code
-let loggedInTitle = null;   // active title id
+let loggedInUser  = null;  // username string or null
+let loggedInTitle = null;  // active title id or null
+let loginsData    = null;  // unused — kept so nothing else breaks
 
-// On boot, ask the server if we already have a session
+// ── Boot: restore session from server ──────────────────────
 async function checkExistingSession() {
     try {
         const res  = await fetch('/api/auth?action=me');
@@ -1275,6 +1241,15 @@ async function checkExistingSession() {
     refreshLoginPanel();
 }
 
+// ── Tab switcher ────────────────────────────────────────────
+function showAuthTab(tab) {
+    document.getElementById('login-card').style.display    = tab === 'login'    ? 'flex' : 'none';
+    document.getElementById('register-card').style.display = tab === 'register' ? 'flex' : 'none';
+    document.getElementById('tab-login').classList.toggle('active',    tab === 'login');
+    document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+}
+
+// ── Login ───────────────────────────────────────────────────
 async function attemptLogin() {
     const btn      = document.getElementById('login-submit');
     const errEl    = document.getElementById('login-error');
@@ -1284,20 +1259,15 @@ async function attemptLogin() {
 
     errEl.textContent = '';
     okEl.textContent  = '';
-
     if (!username || !password) { errEl.textContent = '⚠ PLEASE ENTER BOTH FIELDS.'; return; }
 
-    btn.disabled    = true;
-    btn.textContent = 'CHECKING…';
-
+    btn.disabled = true; btn.textContent = 'CHECKING…';
     try {
         const res  = await fetch('/api/auth', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ action: 'login', username, password }),
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'login', username, password }),
         });
         const data = await res.json();
-
         if (!res.ok) {
             errEl.textContent = `✗ ${data.error || 'Login failed.'}`;
         } else {
@@ -1307,57 +1277,49 @@ async function attemptLogin() {
             document.getElementById('login-password').value = '';
             setTimeout(() => refreshLoginPanel(), 900);
         }
-    } catch (e) {
-        errEl.textContent = '⚠ COULD NOT REACH SERVER.';
-    } finally {
-        btn.disabled    = false;
-        btn.textContent = 'LOGIN';
-    }
+    } catch { errEl.textContent = '⚠ COULD NOT REACH SERVER.'; }
+    finally { btn.disabled = false; btn.textContent = 'LOGIN'; }
 }
 
+// ── Register ────────────────────────────────────────────────
 async function attemptRegister() {
     const btn      = document.getElementById('register-submit');
     const errEl    = document.getElementById('register-error');
     const okEl     = document.getElementById('register-success');
-    const username = document.getElementById('register-username').value.trim();
-    const password = document.getElementById('register-password').value;
+    const username = document.getElementById('reg-username').value.trim();
+    const password = document.getElementById('reg-password').value;
 
     errEl.textContent = '';
     okEl.textContent  = '';
-
     if (!username || !password) { errEl.textContent = '⚠ PLEASE ENTER BOTH FIELDS.'; return; }
 
-    btn.disabled    = true;
-    btn.textContent = 'CREATING…';
-
+    btn.disabled = true; btn.textContent = 'CREATING…';
     try {
         const res  = await fetch('/api/auth', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ action: 'register', username, password }),
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'register', username, password }),
         });
         const data = await res.json();
-
         if (!res.ok) {
             errEl.textContent = `✗ ${data.error || 'Registration failed.'}`;
         } else {
             loggedInUser  = data.user;
             loggedInTitle = null;
             okEl.textContent = `✓ ACCOUNT CREATED! WELCOME, ${data.user.toUpperCase()}!`;
-            document.getElementById('register-password').value = '';
+            document.getElementById('reg-password').value = '';
             setTimeout(() => refreshLoginPanel(), 1200);
         }
-    } catch (e) {
-        errEl.textContent = '⚠ COULD NOT REACH SERVER.';
-    } finally {
-        btn.disabled    = false;
-        btn.textContent = 'CREATE ACCOUNT';
-    }
+    } catch { errEl.textContent = '⚠ COULD NOT REACH SERVER.'; }
+    finally { btn.disabled = false; btn.textContent = 'CREATE ACCOUNT'; }
 }
 
+// ── Logout ──────────────────────────────────────────────────
 async function logoutUser() {
     try {
-        await fetch('/api/auth', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ action: 'logout' }) });
+        await fetch('/api/auth', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'logout' }),
+        });
     } catch (_) {}
     loggedInUser  = null;
     loggedInTitle = null;
@@ -1368,67 +1330,64 @@ async function logoutUser() {
     refreshLoginPanel();
 }
 
-// ── Title picker ────────────────────────────────────────────────
+// ── Title picker ────────────────────────────────────────────
 async function loadTitlePicker() {
     const wrap = document.getElementById('profile-titles-wrap');
+    const activeEl = document.getElementById('profile-active-title');
     if (!wrap) return;
-    wrap.innerHTML = '<div style="font-size:10px;opacity:.4;letter-spacing:2px">LOADING TITLES…</div>';
+    wrap.innerHTML = '<div style="font-size:10px;opacity:.35;letter-spacing:1px">LOADING…</div>';
 
     try {
         const res  = await fetch('/api/titles');
         const data = await res.json();
         window._titlesCache = data.allTitles || [];
 
+        // Update active title display
+        const activeDef = (data.allTitles || []).find(t => t.id === data.activeTitle);
+        activeEl.textContent = activeDef ? activeDef.label : (data.activeTitle || 'None');
+
         if (!data.unlocked || data.unlocked.length === 0) {
-            wrap.innerHTML = '<div style="font-size:10px;opacity:.35;letter-spacing:1px;text-align:center">No titles unlocked yet.<br>Climb the leaderboard to earn some!</div>';
+            wrap.innerHTML = '<div style="font-size:10px;opacity:.3;letter-spacing:1px">No titles unlocked yet.</div>';
             return;
         }
 
         const available = (data.allTitles || []).filter(t => data.unlocked.includes(t.id));
-        const active    = data.activeTitle;
-
-        wrap.innerHTML = available.map(t => `
-            <button class="title-option ${t.id === active ? 'selected' : ''} ${t.class}"
-                    onclick="pickTitle('${t.id}', this)">
-                ${t.label}${t.id === active ? ' ✓' : ''}
-            </button>`).join('');
-
-        // "Clear title" button
-        wrap.innerHTML += `<button class="title-option title-clear" onclick="pickTitle('', null)">✕ Clear title</button>`;
+        wrap.innerHTML = available.map(t =>
+            `<button class="title-btn ${t.class}${t.id === data.activeTitle ? ' selected' : ''}"
+                     onclick="pickTitle('${t.id}')">
+                ${t.label}${t.id === data.activeTitle ? ' ✓' : ''}
+             </button>`
+        ).join('') +
+        `<button class="title-btn title-clear" onclick="pickTitle('')">✕ Clear</button>`;
 
     } catch (e) {
-        wrap.innerHTML = `<div style="font-size:10px;color:#ff4466">Failed to load titles: ${e.message}</div>`;
+        wrap.innerHTML = `<div style="font-size:10px;color:#ff4466">Failed to load titles.</div>`;
     }
 }
 
-async function pickTitle(titleId, btn) {
+async function pickTitle(titleId) {
     try {
         const res  = await fetch('/api/titles', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ action: 'setTitle', title: titleId }),
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'setTitle', title: titleId }),
         });
         const data = await res.json();
         if (!res.ok) { showToast(`✗ ${data.error}`); return; }
-
         loggedInTitle = data.activeTitle;
         showToast(titleId ? `TITLE SET: ${titleId}` : 'TITLE CLEARED');
-        loadTitlePicker(); // re-render picker with new selection
-    } catch (e) {
-        showToast('✗ Could not set title');
-    }
+        loadTitlePicker();
+    } catch { showToast('✗ Could not set title'); }
 }
 
-// ── Panel renderer ──────────────────────────────────────────────
+// ── Panel refresh ───────────────────────────────────────────
 function refreshLoginPanel() {
     const navBtn = document.getElementById('nav-btn-login');
 
     if (loggedInUser) {
-        // Nav button → PROFILE
-        navBtn.textContent = `👤 PROFILE`;
+        navBtn.textContent = '👤 PROFILE';
         navBtn.classList.add('logged-in');
 
-        // Show profile card, hide login + register cards
+        document.getElementById('auth-tab-row').style.display  = 'none';
         document.getElementById('login-card').style.display    = 'none';
         document.getElementById('register-card').style.display = 'none';
         document.getElementById('profile-card').style.display  = 'flex';
@@ -1439,22 +1398,56 @@ function refreshLoginPanel() {
         navBtn.textContent = '⚡ LOGIN';
         navBtn.classList.remove('logged-in');
 
+        document.getElementById('auth-tab-row').style.display  = 'flex';
         document.getElementById('login-card').style.display    = 'flex';
-        document.getElementById('register-card').style.display = 'flex';
+        document.getElementById('register-card').style.display = 'none';
         document.getElementById('profile-card').style.display  = 'none';
     }
 }
 
-function showLoginTab(tab) {
-    document.getElementById('login-card').style.display    = tab === 'login'    ? 'flex' : 'none';
-    document.getElementById('register-card').style.display = tab === 'register' ? 'flex' : 'none';
+// ── Toast notification ──────────────────────────────────────
+function showToast(msg) {
+    let t = document.getElementById('tmb-toast');
+    if (!t) {
+        t = document.createElement('div');
+        t.id = 'tmb-toast';
+        Object.assign(t.style, {
+            position:'fixed', bottom:'90px', left:'50%',
+            transform:'translateX(-50%) translateY(14px)',
+            background:'rgba(0,255,180,0.1)', border:'1px solid rgba(0,255,180,0.4)',
+            color:'#00ffcc', fontFamily:"'Share Tech Mono',monospace",
+            fontSize:'11px', letterSpacing:'1.5px', padding:'10px 22px',
+            borderRadius:'8px', zIndex:'9998', opacity:'0',
+            pointerEvents:'none', whiteSpace:'nowrap',
+            transition:'opacity 0.3s ease, transform 0.3s ease',
+            textShadow:'0 0 10px rgba(0,255,180,0.6)',
+        });
+        document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    requestAnimationFrame(() => {
+        t.style.opacity = '1';
+        t.style.transform = 'translateX(-50%) translateY(0)';
+    });
+    clearTimeout(t._tmr);
+    t._tmr = setTimeout(() => {
+        t.style.opacity = '0';
+        t.style.transform = 'translateX(-50%) translateY(10px)';
+    }, 3500);
 }
 
+// ── Enter-key shortcuts ─────────────────────────────────────
 document.getElementById('login-password').addEventListener('keydown', e => {
     if (e.code === 'Enter') { e.preventDefault(); attemptLogin(); }
 });
 document.getElementById('login-username').addEventListener('keydown', e => {
     if (e.code === 'Enter') { e.preventDefault(); document.getElementById('login-password').focus(); }
+});
+document.getElementById('reg-password').addEventListener('keydown', e => {
+    if (e.code === 'Enter') { e.preventDefault(); attemptRegister(); }
+});
+document.getElementById('reg-username').addEventListener('keydown', e => {
+    if (e.code === 'Enter') { e.preventDefault(); document.getElementById('reg-password').focus(); }
 });
 
 // ──────────────────────────────────────────────────────────
@@ -1505,7 +1498,6 @@ function gameLoop() {
         drawPlayer();
         drawParticles();
         drawLevelComplete();
-        if ((performance.now() - levelCompleteTime) / 1000 >= LEVEL_COMPLETE_DELAY) advanceToNextLevel();
         requestAnimationFrame(gameLoop);
         return;
     }
@@ -1687,6 +1679,8 @@ function movePlayer(dir) {
     playerLane = nl;
     targetY = getLaneY(playerLane);
     combo++;
+    // update peak combo so we can report it later
+    if (combo > peakCombo) peakCombo = combo;
     comboTimer = 140 + Math.min(combo * 2, 80);
     spawnParticles(PLAYER_X, playerY, 8, getAccentColors(), 4);
     const milestones = [10, 25, 50, 100, 500];
@@ -1707,22 +1701,33 @@ function movePlayer(dir) {
 function die() {
     state = 'dead';
     const fs = Math.floor(score);
-    if (fs > bestScore) { bestScore = fs; localStorage.setItem('neonshift_best', bestScore); }
+    if (fs > bestScore) {
+        bestScore = fs;
+        localStorage.setItem('neonshift_best', bestScore);
+    }
     screenShake = 20;
     spawnParticles(PLAYER_X + PLAYER_W / 2, playerY, 60, ['#ff0044', '#ff6600', '#ffff00', '#ff00aa', 'white'], 10);
     stopAudio();
-    submitScore(fs, combo);
+
+    // submit the run to the leaderboard (will no-op if not logged in)
+    submitScore(fs, peakCombo).catch(e => console.warn('Score submit failed:', e.message));
 }
 
 function completeLevel() {
     state = 'levelcomplete';
     levelCompleteTime = performance.now();
     const fs = Math.floor(score);
-    if (fs > bestScore) { bestScore = fs; localStorage.setItem('neonshift_best', bestScore); }
+    if (fs > bestScore) {
+        bestScore = fs;
+        localStorage.setItem('neonshift_best', bestScore);
+    }
     stopAudio();
+
+    // also submit score on level completion (just in case)
+    submitScore(fs, peakCombo).catch(e => console.warn('Score submit failed:', e.message));
+
     for (let i = 0; i < 8; i++) spawnParticles(rand(0, canvas.width), rand(0, canvas.height), 18, ['#00ffcc', '#00ffff', '#88ff88', '#ffffff', '#ffff00'], 10);
     screenShake = 14;
-    submitScore(fs, combo);
 }
 
 function advanceToNextLevel() {
@@ -1740,6 +1745,7 @@ function startGame() {
     state = 'playing';
     score = 0;
     combo = 1;
+    peakCombo = 1;
     comboTimer = 0;
     speed = BASE_SPEED_LIVE;
     playerLane = Math.floor(NUM_LANES / 2);
@@ -1930,5 +1936,4 @@ window.addEventListener('resize', () => {
 //  BOOT
 // ──────────────────────────────────────────────────────────
 
-checkExistingSession();
 loadAllLevels();

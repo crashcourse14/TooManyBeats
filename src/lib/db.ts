@@ -67,7 +67,31 @@ export function writeJson<T>(filePath: string, data: T): void {
 
 // ── Typed convenience accessors ────────────────────────────────
 
-export const readUsers       = () => readJson<User[]>(USERS_FILE, []);
+import bcrypt from 'bcryptjs';
+
+/**
+ * readUsers wraps readJson but also normalises legacy records.
+ * Older versions of the app stored plaintext `password` values instead of
+ * `passwordHash`.  To avoid the "Illegal arguments: string, undefined" error
+ * we automatically convert those entries to hashes when the file is loaded.
+ * The file is rewritten once the migration is performed.
+ */
+export const readUsers = (): User[] => {
+  const raw = readJson<any[]>(USERS_FILE, []);
+  let changed = false;
+  const users: User[] = raw.map(u => {
+    // If there's an old `password` field, hash it and delete it.
+    if (!u.passwordHash && typeof u.password === 'string') {
+      u.passwordHash = bcrypt.hashSync(u.password, 12);
+      delete u.password;
+      changed = true;
+    }
+    return u as User;
+  });
+  if (changed) writeJson(USERS_FILE, users);
+  return users;
+};
+
 export const writeUsers      = (d: User[]) => writeJson(USERS_FILE, d);
 
 export const readLeaderboard = () => readJson<LeaderboardEntry[]>(LEADERBOARD_FILE, []);
