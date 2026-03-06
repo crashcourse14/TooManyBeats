@@ -2,7 +2,7 @@
 Too Many Beats is a rythim game where you have to advoid obsticales of all difficulties.
 
 ## Game Version
-Update (Beta) 1.0 - 3.3.26
+Update (Beta) 1.0 - 3.6.26
 
 ## Leveling
 All levels can be programmed, and modified in /levels/. 
