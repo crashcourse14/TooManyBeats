@@ -29,9 +29,8 @@ The levels are stored in a .json file. There are no rules for songs (be mature a
 ```
 
 ## Account
-Accounts are **manually** added. You can still play the game even if you DONT have an account. 
-Just because the login data is PUBLIC DOES NOT MEAN that you can LOG INTO ANOTHER user's ACCOUNT. 
-Speaking of login data being public; DO NOT make an account using PERSONAL login data. Just create one that you'll remember and one that doesnt matter if someone finds it. 
+Accounts are NO LONGER manually added! Just create an account through the game.
+Login data is no longer public and is hashed.
 
 ## Seasonal Titles
 Seasonal Titles are given out to the top 225, 10, and the top number 1 players in the world. These titles include:
@@ -50,7 +49,4 @@ Custom titles will be added by DEVELOPERS. Contributors are NOT allowed to add t
 - Do NOT give your self a custom title, UNLESS TOLD SO.
 
 ## Future Plan
-- We will get a server when we can afford one
-- We will update the game to support PHP like we did before
-- Game will support auto-update leaderboard, as well as independent account creation
-- Changeable titles (From your profile)
+- Match making (Going to have fun with this)
