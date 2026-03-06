@@ -6,9 +6,11 @@
 
 import { createClient } from '@supabase/supabase-js';
 
+//I connected VERCEL to SUBABASE, uknown if I still need the url and key.
+
 // ── Supabase Client ─────────────────────────────────────────────
 const supabaseUrl = 'https://zkoibcpekzqvvgbijvtl.supabase.co';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inprb2liY3Bla3pxdnZnYmlqdnRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2NTg4MjEsImV4cCI6MjA4ODIzNDgyMX0.dOB7XXWTuyxX52kfKzJWp5leXETpQWk2GqtigDYcWXs';
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ── Types ──────────────────────────────────────────────────────
