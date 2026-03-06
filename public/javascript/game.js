@@ -13,6 +13,10 @@ window.addEventListener('mousemove', e => {
     cursor.style.top = e.clientY + 'px';
 });
 
+// Hide UI elements initially - they will only show during gameplay
+document.getElementById('ui').style.display = 'none';
+document.getElementById('powerup-bar').style.display = 'none';
+
 // ──────────────────────────────────────────────────────────
 //  LEVEL SYSTEM
 // ──────────────────────────────────────────────────────────
@@ -1105,14 +1109,12 @@ function getTitleBadgeHTML(entry) {
     let cls = 't-custom';
     let label = titleId;
 
-    if (titleId.includes('Top Player')) {
+    if (titleId === 'Season 1 Top Player') {
         cls = 't-TopPlayer';
-    } else if (titleId.includes('top10')) {
+    } else if (titleId === 'Season 1 Top 10') {
         cls = 't-top10';
-        label = 'Top 10';
-    } else if (titleId.includes('top225') || titleId.includes('top100')) {
+    } else if (titleId.includes('Top 225') || titleId.includes('Top 100')) {
         cls = 't-top225';
-        label = 'Top 225';
     } else if (titleId.includes('world_record')) {
         cls = 't-wr';
         label = 'World Record';
@@ -1164,9 +1166,9 @@ function renderLeaderboard() {
         const barPct = Math.round(((entry.score || 0) / maxScore) * 100);
         // Assign title based on rank if not provided
         if (!entry.title) {
-            if (rank === 1) entry.title = 'TopPlayer';
-            else if (rank <= 10) entry.title = 'top10';
-            else if (rank <= 225) entry.title = 'top225';
+            if (rank === 1) entry.title = 'Season 1 Top Player';
+            else if (rank <= 10) entry.title = 'Season 1 Top 10';
+            else if (rank <= 225) entry.title = 'Top 225';
         }
         const titleHTML = getTitleBadgeHTML(entry);
 
@@ -1356,27 +1358,37 @@ async function loadTitlePicker() {
     wrap.innerHTML = '<div style="font-size:10px;opacity:.35;letter-spacing:1px">LOADING…</div>';
 
     try {
-        const res  = await fetch('/api/titles');
+        // Fetch user data including titles
+        const res = await fetch('/api/auth?action=me');
         const data = await res.json();
-        window._titlesCache = data.allTitles || [];
+        if (!data.user) throw new Error('Not logged in');
 
         // Update active title display
-        const activeDef = (data.allTitles || []).find(t => t.id === data.activeTitle);
-        activeEl.textContent = activeDef ? activeDef.label : (data.activeTitle || 'None');
+        activeEl.textContent = data.title || 'None';
 
-        if (!data.unlocked || data.unlocked.length === 0) {
+        const available = JSON.parse(data.titles || '[]');
+        if (available.length === 0) {
             wrap.innerHTML = '<div style="font-size:10px;opacity:.3;letter-spacing:1px">No titles unlocked yet.</div>';
             return;
         }
 
-        const available = (data.allTitles || []).filter(t => data.unlocked.includes(t.id));
-        wrap.innerHTML = available.map(t =>
-            `<button class="title-btn ${t.class}${t.id === data.activeTitle ? ' selected' : ''}"
-                     onclick="pickTitle('${t.id}')">
-                ${t.label}${t.id === data.activeTitle ? ' ✓' : ''}
-             </button>`
-        ).join('') +
-        `<button class="title-btn title-clear" onclick="pickTitle('')">✕ Clear</button>`;
+        const select = document.createElement('select');
+        select.id = 'title-select';
+        select.style.cssText = `
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 6px;
+            color: white;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px;
+            padding: 8px 12px;
+            margin-top: 8px;
+        `;
+        select.innerHTML = '<option value="">✕ Clear</option>' + available.map(t => `<option value="${t}"${t === data.title ? ' selected' : ''}>${t}</option>`).join('');
+        select.addEventListener('change', () => pickTitle(select.value));
+        wrap.innerHTML = '';
+        wrap.appendChild(select);
 
     } catch (e) {
         wrap.innerHTML = `<div style="font-size:10px;color:#ff4466">Failed to load titles.</div>`;
@@ -1391,7 +1403,7 @@ async function pickTitle(titleId) {
         });
         const data = await res.json();
         if (!res.ok) { showToast(`✗ ${data.error}`); return; }
-        loggedInTitle = data.activeTitle;
+        loggedInTitle = data.title;
         showToast(titleId ? `TITLE SET: ${titleId}` : 'TITLE CLEARED');
         loadTitlePicker();
     } catch { showToast('✗ Could not set title'); }
@@ -1682,6 +1694,11 @@ function gameLoop() {
     else if (combo >= 25) comboEl.classList.add('tier3');
     else if (combo >= 10) comboEl.classList.add('tier2');
     comboEl.style.fontSize = Math.min(28 + Math.floor(combo / 5) * 3, 56) + 'px';
+
+    // Show/hide UI elements only during gameplay
+    const uiVisible = state === 'playing';
+    document.getElementById('ui').style.display = uiVisible ? 'flex' : 'none';
+    document.getElementById('powerup-bar').style.display = uiVisible ? 'flex' : 'none';
 
     requestAnimationFrame(gameLoop);
 }
