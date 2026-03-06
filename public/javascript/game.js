@@ -1051,7 +1051,6 @@ lsSearch.addEventListener('keydown', e => {
 // ──────────────────────────────────────────────────────────
 
 let lbData        = null;
-let lbFilterLevel = 'all';
 
 async function loadLeaderboard() {
     console.log("Fetching leaderboard data...");
@@ -1085,7 +1084,6 @@ async function submitScore(runScore, peakCombo) {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 score: runScore,
-                level: currentLevel ? currentLevel.name : '',
                 combo: peakCombo,
             }),
         });
@@ -1141,22 +1139,11 @@ function renderLeaderboard() {
         return;
     }
 
-    // Build level filter buttons from unique level names in the data
-    const levelNames = ['all', ...new Set(raw.map(e => e.level || e.levelName || '').filter(Boolean))];
-    filterEl.innerHTML = levelNames.map(name =>
-        `<button class="lb-filter-btn${lbFilterLevel===name?' active':''}"
-       onclick="lbFilterLevel='${name}';renderLeaderboard()">
-       ${name==='all'?'ALL LEVELS':name}
-     </button>`).join('');
+    // No level filtering since scores are global
+    filterEl.innerHTML = '';
 
-    // Filter + sort descending by score
-    const filtered = (lbFilterLevel === 'all' ? raw : raw.filter(e => (e.level || e.levelName || '') === lbFilterLevel))
-        .slice().sort((a, b) => (b.score || 0) - (a.score || 0));
-
-    if (!filtered.length) {
-        listEl.innerHTML = '<div class="lb-msg">NO SCORES FOR THIS FILTER</div>';
-        return;
-    }
+    // Sort descending by score
+    const filtered = raw.slice().sort((a, b) => (b.score || 0) - (a.score || 0));
 
     const maxScore = filtered[0].score || 1;
 
@@ -1177,7 +1164,7 @@ function renderLeaderboard() {
         const barPct = Math.round(((entry.score || 0) / maxScore) * 100);
         // Assign title based on rank if not provided
         if (!entry.title) {
-            if (rank === 1) entry.title = 'Season 1 Top Player';
+            if (rank === 1) entry.title = 'TopPlayer';
             else if (rank <= 10) entry.title = 'top10';
             else if (rank <= 225) entry.title = 'top225';
         }
@@ -1775,6 +1762,9 @@ function advanceToNextLevel() {
 }
 
 function startGame() {
+    // Only allow starting from levels screen, death screen, or level complete screen
+    if (!(currentTitleTab === 'levels' || state === 'dead' || state === 'levelcomplete')) return;
+
     state = 'playing';
     score = 0;
     combo = 1;
