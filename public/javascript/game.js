@@ -1150,7 +1150,7 @@ function renderLeaderboard() {
             }) : '';
         const meta = [dateStr, entry.combo ? `x${entry.combo} COMBO` : ''].filter(Boolean).join('  ·  ');
         const barPct = Math.round(((entry.score || 0) / maxScore) * 100);
-        const titleHTML = getTitleBadgeHTML(name);
+        const titleHTML = getTitleBadgeHTML(entry);
 
         return `
       <div class="lb-row${rankClass}">
