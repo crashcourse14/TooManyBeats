@@ -1,0 +1,7 @@
+[
+  { "id": "season1_pioneer", "label": "Season 1 Pioneer", "class": "t-new"    },
+  { "id": "top10",           "label": "Top 10",           "class": "t-top10"  },
+  { "id": "top100",          "label": "Top 100",          "class": "t-top225" },
+  { "id": "world_record",    "label": "World Record",     "class": "t-wr"     },
+  { "id": "custom",          "label": "Fan Favourite",    "class": "t-custom" }
+]

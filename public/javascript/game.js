@@ -1053,60 +1053,89 @@ lsSearch.addEventListener('keydown', e => {
 });
 
 // ──────────────────────────────────────────────────────────
-//  LEADERBOARD
+//  LEADERBOARD  (Next.js API backend)
 // ──────────────────────────────────────────────────────────
 
-let lbData = null; // cached JSON after first fetch
-let lbFilterLevel = 'all'; // 'all' or a level name
+let lbData        = null;
+let lbFilterLevel = 'all';
 
 async function loadLeaderboard() {
-    // Only fetch once; after that just re-render with cached data
-    if (lbData) {
-        renderLeaderboard();
-        return;
-    }
-
+    if (lbData) { renderLeaderboard(); refreshLeaderboard(); return; }
     document.getElementById('lb-list').innerHTML = '<div class="lb-msg">LOADING…</div>';
+    await refreshLeaderboard();
+    if (lbData) renderLeaderboard();
+}
 
+async function refreshLeaderboard() {
     try {
-        // Fetch leaderboard and logins in parallel — titles are optional so we
-        // swallow any logins error rather than blocking the whole leaderboard.
-        const [lbRes] = await Promise.all([
-            fetch('/data/leaderboard.json'),
-            fetchLogins().catch(() => null)
-        ]);
-        if (!lbRes.ok) throw new Error(`HTTP ${lbRes.status}`);
-        lbData = await lbRes.json();
-        renderLeaderboard();
-    } catch (err) {
+        const res = await fetch('/api/leaderboard');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        lbData = await res.json();
+        if (document.getElementById('leaderboard-panel').classList.contains('visible')) {
+            renderLeaderboard();
+        }
+    } catch (e) {
         document.getElementById('lb-list').innerHTML =
-            `<div class="lb-msg error">COULD NOT LOAD LEADERBOARD<br><span style="font-size:9px;opacity:.6">${err.message}</span><br><br>
-       <span style="font-size:9px;opacity:.4">Make sure /data/leaderboard.json exists on your server.</span></div>`;
+            `<div class="lb-msg error">COULD NOT LOAD LEADERBOARD<br>
+             <span style="font-size:9px;opacity:.5">${e.message}</span></div>`;
     }
 }
 
-// Returns an HTML string for a player's title badge, or '' if they have none.
-// Reads from the already-cached loginsData (array of user objects).
-// Each user object in logins.json can carry a "title" field, e.g.:
-//   { "username": "alice", "password": "…", "title": "Season 1 World Record Holder" }
-// The title text drives both the display string and the colour class.
-function getTitleBadgeHTML(playerName) {
-    if (!loginsData || !Array.isArray(loginsData) || !playerName) return '';
+// Submit score to PHP backend. Called on die() and completeLevel().
+async function submitScore(runScore, peakCombo) {
+    if (!loggedInUser || runScore <= 0) return;
+    try {
+        const res = await fetch('/api/leaderboard', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+                score: runScore,
+                level: currentLevel ? currentLevel.name : '',
+                combo: peakCombo,
+            }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+            await refreshLeaderboard();
+            showToast(`+${runScore.toLocaleString()} SAVED · TOTAL: ${(data.newTotal||runScore).toLocaleString()}`);
+        }
+    } catch (e) {
+        console.warn('Score submit failed:', e.message);
+    }
+}
 
-    const entry = loginsData.find(e =>
-        (e.username || e.user || '').toLowerCase() === playerName.toLowerCase()
-    );
-    if (!entry || !entry.title) return '';
+// Build title badge HTML from leaderboard entry (title field returned by PHP)
+function getTitleBadgeHTML(entry) {
+    const titleId = entry.title;
+    if (!titleId) return '';
+    const def = (window._titlesCache || []).find(t => t.id === titleId);
+    const label = def ? def.label : titleId;
+    const cls   = def ? def.class : 't-custom';
+    return `<span class="lb-title ${cls}">${label}</span>`;
+}
 
-    const title = entry.title;
-    const tl = title.toLowerCase();
-
-    let cls = 't-custom';
-    if (tl.includes('top player')) cls = 't-TopPlayer';
-    else if (tl.includes('top 10') || tl.includes('top10')) cls = 't-top10';
-    else if (tl.includes('top 225') || tl.includes('top225')) cls = 't-top255';
-
-    return `<span class="lb-title ${cls}">${title}</span>`;
+function showToast(msg) {
+    let t = document.getElementById('tmb-toast');
+    if (!t) {
+        t = document.createElement('div');
+        t.id = 'tmb-toast';
+        Object.assign(t.style, {
+            position:'fixed', bottom:'90px', left:'50%',
+            transform:'translateX(-50%) translateY(14px)',
+            background:'rgba(0,255,180,0.1)', border:'1px solid rgba(0,255,180,0.4)',
+            color:'#00ffcc', fontFamily:"'Share Tech Mono',monospace",
+            fontSize:'11px', letterSpacing:'1.5px', padding:'10px 22px',
+            borderRadius:'8px', zIndex:'9998', opacity:'0',
+            pointerEvents:'none', whiteSpace:'nowrap',
+            transition:'opacity 0.3s ease, transform 0.3s ease',
+            textShadow:'0 0 10px rgba(0,255,180,0.6)',
+        });
+        document.body.appendChild(t);
+    }
+    t.textContent = msg;
+    requestAnimationFrame(() => { t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)'; });
+    clearTimeout(t._tmr);
+    t._tmr = setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(10px)'; }, 3500);
 }
 
 function renderLeaderboard() {
@@ -1155,7 +1184,7 @@ function renderLeaderboard() {
             }) : '';
         const meta = [dateStr, entry.combo ? `x${entry.combo} COMBO` : ''].filter(Boolean).join('  ·  ');
         const barPct = Math.round(((entry.score || 0) / maxScore) * 100);
-        const titleHTML = getTitleBadgeHTML(name);
+        const titleHTML = getTitleBadgeHTML(entry);
 
         return `
       <div class="lb-row${rankClass}">
@@ -1226,126 +1255,206 @@ function buildLinksGrid() {
 }
 
 // ──────────────────────────────────────────────────────────
-//  LOGIN SYSTEM
+//  AUTH  (Next.js session backend)
 // ──────────────────────────────────────────────────────────
 
-// Holds the logged-in username, or null if not logged in.
-// Persisted in sessionStorage so a page refresh logs out.
-let loggedInUser = sessionStorage.getItem('tmb_user') || null;
+let loggedInUser  = null;   // set after PHP session check
+let loginsData    = null;   // kept for legacy compat — unused by new code
+let loggedInTitle = null;   // active title id
 
-// Cached logins data after first fetch
-let loginsData = null;
-
-async function fetchLogins() {
-    if (loginsData) return loginsData;
-    const res = await fetch('/data/logins.json');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    loginsData = await res.json();
-    return loginsData;
+// On boot, ask the server if we already have a session
+async function checkExistingSession() {
+    try {
+        const res  = await fetch('/api/auth?action=me');
+        const data = await res.json();
+        if (data.user) {
+            loggedInUser  = data.user;
+            loggedInTitle = data.title;
+        }
+    } catch (_) {}
+    refreshLoginPanel();
 }
 
 async function attemptLogin() {
-    const btn = document.getElementById('login-submit');
-    const errEl = document.getElementById('login-error');
-    const okEl = document.getElementById('login-success');
+    const btn      = document.getElementById('login-submit');
+    const errEl    = document.getElementById('login-error');
+    const okEl     = document.getElementById('login-success');
     const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value;
 
     errEl.textContent = '';
-    okEl.textContent = '';
+    okEl.textContent  = '';
 
-    if (!username || !password) {
-        errEl.textContent = '⚠ PLEASE ENTER BOTH FIELDS.';
-        return;
-    }
+    if (!username || !password) { errEl.textContent = '⚠ PLEASE ENTER BOTH FIELDS.'; return; }
 
-    btn.disabled = true;
+    btn.disabled    = true;
     btn.textContent = 'CHECKING…';
 
     try {
-        const data = await fetchLogins();
+        const res  = await fetch('/api/auth', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ action: 'login', username, password }),
+        });
+        const data = await res.json();
 
-        // Support both array [{username, password}] and object {username: password}
-        let match = false;
-        if (Array.isArray(data)) {
-            match = data.some(entry =>
-                (entry.username || entry.user || '').toLowerCase() === username.toLowerCase() &&
-                (entry.password || entry.pass || '') === password
-            );
+        if (!res.ok) {
+            errEl.textContent = `✗ ${data.error || 'Login failed.'}`;
         } else {
-            // Object map: { "alice": "hunter2", ... }
-            const key = Object.keys(data).find(k => k.toLowerCase() === username.toLowerCase());
-            match = key !== undefined && data[key] === password;
-        }
-
-        if (match) {
-            loggedInUser = username;
-            sessionStorage.setItem('tmb_user', username);
-            okEl.textContent = `✓ WELCOME BACK, ${username.toUpperCase()}!`;
+            loggedInUser  = data.user;
+            loggedInTitle = data.title;
+            okEl.textContent = `✓ WELCOME BACK, ${data.user.toUpperCase()}!`;
             document.getElementById('login-password').value = '';
-            // Short pause so the success message reads, then refresh panel
             setTimeout(() => refreshLoginPanel(), 900);
-        } else {
-            errEl.textContent = '✗ INCORRECT USERNAME OR PASSWORD.';
         }
-    } catch (err) {
-        errEl.textContent = `⚠ COULD NOT REACH LOGIN SERVER.`;
-        console.error('Login fetch error:', err);
+    } catch (e) {
+        errEl.textContent = '⚠ COULD NOT REACH SERVER.';
     } finally {
-        btn.disabled = false;
+        btn.disabled    = false;
         btn.textContent = 'LOGIN';
     }
 }
 
-function logoutUser() {
-    loggedInUser = null;
-    sessionStorage.removeItem('tmb_user');
-    document.getElementById('login-error').textContent = '';
-    document.getElementById('login-success').textContent = '';
-    document.getElementById('login-username').value = '';
-    document.getElementById('login-password').value = '';
+async function attemptRegister() {
+    const btn      = document.getElementById('register-submit');
+    const errEl    = document.getElementById('register-error');
+    const okEl     = document.getElementById('register-success');
+    const username = document.getElementById('register-username').value.trim();
+    const password = document.getElementById('register-password').value;
+
+    errEl.textContent = '';
+    okEl.textContent  = '';
+
+    if (!username || !password) { errEl.textContent = '⚠ PLEASE ENTER BOTH FIELDS.'; return; }
+
+    btn.disabled    = true;
+    btn.textContent = 'CREATING…';
+
+    try {
+        const res  = await fetch('/api/auth', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ action: 'register', username, password }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            errEl.textContent = `✗ ${data.error || 'Registration failed.'}`;
+        } else {
+            loggedInUser  = data.user;
+            loggedInTitle = null;
+            okEl.textContent = `✓ ACCOUNT CREATED! WELCOME, ${data.user.toUpperCase()}!`;
+            document.getElementById('register-password').value = '';
+            setTimeout(() => refreshLoginPanel(), 1200);
+        }
+    } catch (e) {
+        errEl.textContent = '⚠ COULD NOT REACH SERVER.';
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = 'CREATE ACCOUNT';
+    }
+}
+
+async function logoutUser() {
+    try {
+        await fetch('/api/auth', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ action: 'logout' }) });
+    } catch (_) {}
+    loggedInUser  = null;
+    loggedInTitle = null;
+    document.getElementById('login-error').textContent    = '';
+    document.getElementById('login-success').textContent  = '';
+    document.getElementById('login-username').value       = '';
+    document.getElementById('login-password').value       = '';
     refreshLoginPanel();
 }
 
-// Sync the panel UI to the current login state
-function refreshLoginPanel() {
-    const formFields = document.querySelectorAll('#login-card .login-field');
-    const submitBtn = document.getElementById('login-submit');
-    const logoutRow = document.getElementById('login-logout-row');
-    const usernameEl = document.getElementById('login-username-display');
-    const navBtn = document.getElementById('nav-btn-login');
+// ── Title picker ────────────────────────────────────────────────
+async function loadTitlePicker() {
+    const wrap = document.getElementById('profile-titles-wrap');
+    if (!wrap) return;
+    wrap.innerHTML = '<div style="font-size:10px;opacity:.4;letter-spacing:2px">LOADING TITLES…</div>';
 
-    if (loggedInUser) {
-        // Hide form, show logout row
-        formFields.forEach(el => el.style.display = 'none');
-        submitBtn.style.display = 'none';
-        logoutRow.classList.add('visible');
-        usernameEl.textContent = loggedInUser.toUpperCase();
-        navBtn.textContent = `✓ ${loggedInUser.toUpperCase()}`;
-        navBtn.classList.add('logged-in');
-    } else {
-        // Show form, hide logout row
-        formFields.forEach(el => el.style.display = '');
-        submitBtn.style.display = '';
-        logoutRow.classList.remove('visible');
-        usernameEl.textContent = '';
-        navBtn.textContent = '⚡ LOGIN';
-        navBtn.classList.remove('logged-in');
+    try {
+        const res  = await fetch('/api/titles');
+        const data = await res.json();
+        window._titlesCache = data.allTitles || [];
+
+        if (!data.unlocked || data.unlocked.length === 0) {
+            wrap.innerHTML = '<div style="font-size:10px;opacity:.35;letter-spacing:1px;text-align:center">No titles unlocked yet.<br>Climb the leaderboard to earn some!</div>';
+            return;
+        }
+
+        const available = (data.allTitles || []).filter(t => data.unlocked.includes(t.id));
+        const active    = data.activeTitle;
+
+        wrap.innerHTML = available.map(t => `
+            <button class="title-option ${t.id === active ? 'selected' : ''} ${t.class}"
+                    onclick="pickTitle('${t.id}', this)">
+                ${t.label}${t.id === active ? ' ✓' : ''}
+            </button>`).join('');
+
+        // "Clear title" button
+        wrap.innerHTML += `<button class="title-option title-clear" onclick="pickTitle('', null)">✕ Clear title</button>`;
+
+    } catch (e) {
+        wrap.innerHTML = `<div style="font-size:10px;color:#ff4466">Failed to load titles: ${e.message}</div>`;
     }
 }
 
-// Allow pressing Enter in the password field to submit
-document.getElementById('login-password').addEventListener('keydown', e => {
-    if (e.code === 'Enter') {
-        e.preventDefault();
-        attemptLogin();
+async function pickTitle(titleId, btn) {
+    try {
+        const res  = await fetch('/api/titles', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ action: 'setTitle', title: titleId }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(`✗ ${data.error}`); return; }
+
+        loggedInTitle = data.activeTitle;
+        showToast(titleId ? `TITLE SET: ${titleId}` : 'TITLE CLEARED');
+        loadTitlePicker(); // re-render picker with new selection
+    } catch (e) {
+        showToast('✗ Could not set title');
     }
+}
+
+// ── Panel renderer ──────────────────────────────────────────────
+function refreshLoginPanel() {
+    const navBtn = document.getElementById('nav-btn-login');
+
+    if (loggedInUser) {
+        // Nav button → PROFILE
+        navBtn.textContent = `👤 PROFILE`;
+        navBtn.classList.add('logged-in');
+
+        // Show profile card, hide login + register cards
+        document.getElementById('login-card').style.display    = 'none';
+        document.getElementById('register-card').style.display = 'none';
+        document.getElementById('profile-card').style.display  = 'flex';
+        document.getElementById('profile-username').textContent = loggedInUser.toUpperCase();
+
+        loadTitlePicker();
+    } else {
+        navBtn.textContent = '⚡ LOGIN';
+        navBtn.classList.remove('logged-in');
+
+        document.getElementById('login-card').style.display    = 'flex';
+        document.getElementById('register-card').style.display = 'flex';
+        document.getElementById('profile-card').style.display  = 'none';
+    }
+}
+
+function showLoginTab(tab) {
+    document.getElementById('login-card').style.display    = tab === 'login'    ? 'flex' : 'none';
+    document.getElementById('register-card').style.display = tab === 'register' ? 'flex' : 'none';
+}
+
+document.getElementById('login-password').addEventListener('keydown', e => {
+    if (e.code === 'Enter') { e.preventDefault(); attemptLogin(); }
 });
 document.getElementById('login-username').addEventListener('keydown', e => {
-    if (e.code === 'Enter') {
-        e.preventDefault();
-        document.getElementById('login-password').focus();
-    }
+    if (e.code === 'Enter') { e.preventDefault(); document.getElementById('login-password').focus(); }
 });
 
 // ──────────────────────────────────────────────────────────
@@ -1598,26 +1707,22 @@ function movePlayer(dir) {
 function die() {
     state = 'dead';
     const fs = Math.floor(score);
-    if (fs > bestScore) {
-        bestScore = fs;
-        localStorage.setItem('neonshift_best', bestScore);
-    }
+    if (fs > bestScore) { bestScore = fs; localStorage.setItem('neonshift_best', bestScore); }
     screenShake = 20;
     spawnParticles(PLAYER_X + PLAYER_W / 2, playerY, 60, ['#ff0044', '#ff6600', '#ffff00', '#ff00aa', 'white'], 10);
     stopAudio();
+    submitScore(fs, combo);
 }
 
 function completeLevel() {
     state = 'levelcomplete';
     levelCompleteTime = performance.now();
     const fs = Math.floor(score);
-    if (fs > bestScore) {
-        bestScore = fs;
-        localStorage.setItem('neonshift_best', bestScore);
-    }
+    if (fs > bestScore) { bestScore = fs; localStorage.setItem('neonshift_best', bestScore); }
     stopAudio();
     for (let i = 0; i < 8; i++) spawnParticles(rand(0, canvas.width), rand(0, canvas.height), 18, ['#00ffcc', '#00ffff', '#88ff88', '#ffffff', '#ffff00'], 10);
     screenShake = 14;
+    submitScore(fs, combo);
 }
 
 function advanceToNextLevel() {
@@ -1825,4 +1930,5 @@ window.addEventListener('resize', () => {
 //  BOOT
 // ──────────────────────────────────────────────────────────
 
+checkExistingSession();
 loadAllLevels();
