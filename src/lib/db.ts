@@ -1,26 +1,22 @@
 /**
  * Too Many Beats — Supabase database helpers
- *
- * Uses Supabase for data storage, suitable for serverless deployments like Vercel.
  */
 
 import { createClient } from '@supabase/supabase-js';
 
-//I connected VERCEL to SUBABASE, uknown if I still need the url and key.
-
-// ── Supabase Client ─────────────────────────────────────────────
 const supabaseUrl = 'https://zkoibcpekzqvvgbijvtl.supabase.co';
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ── Types ──────────────────────────────────────────────────────
+
 export interface User {
-  id?:         number;
-  username:    string;
+  id?:           number;
+  username:      string;
   password_hash: string;
-  active_title: string | null;
-  titles:      string[];   // unlocked title IDs
-  created_at:  string;
+  active_title:  string | null;
+  titles:        string[];
+  created_at:    string;
 }
 
 export interface LeaderboardEntry {
@@ -30,7 +26,7 @@ export interface LeaderboardEntry {
   score:     number;
   combo:     number;
   timestamp: string;
-  title?:    string | null; // injected at read time
+  title?:    string | null;
 }
 
 export interface Title {
@@ -39,26 +35,35 @@ export interface Title {
   class: string;
 }
 
-// ── Typed convenience accessors ────────────────────────────────
+// ── Users ──────────────────────────────────────────────────────
 
 export const readUsers = async (): Promise<User[]> => {
   const { data, error } = await supabase
     .from('users')
-    .select('*')
-    .order('created_at', { ascending: false });
+    .select('*');
   if (error) throw error;
   return data || [];
 };
 
-export const writeUsers = async (users: User[]): Promise<void> => {
-  // For simplicity, delete all and insert new (not ideal for production)
-  const { error: deleteError } = await supabase.from('users').delete().neq('id', 0);
-  if (deleteError) throw deleteError;
-  if (users.length > 0) {
-    const { error: insertError } = await supabase.from('users').insert(users);
-    if (insertError) throw insertError;
-  }
+export const createUser = async (user: Omit<User, 'id'>): Promise<void> => {
+  const { error } = await supabase
+    .from('users')
+    .insert(user);
+  if (error) throw error;
 };
+
+export const updateUser = async (
+  username: string,
+  updates: Partial<Omit<User, 'id' | 'username'>>
+): Promise<void> => {
+  const { error } = await supabase
+    .from('users')
+    .update(updates)
+    .eq('username', username);
+  if (error) throw error;
+};
+
+// ── Leaderboard ────────────────────────────────────────────────
 
 export const readLeaderboard = async (): Promise<LeaderboardEntry[]> => {
   const { data, error } = await supabase
@@ -69,21 +74,30 @@ export const readLeaderboard = async (): Promise<LeaderboardEntry[]> => {
   return data || [];
 };
 
-export const writeLeaderboard = async (entries: LeaderboardEntry[]): Promise<void> => {
-  // Similar to users
-  const { error: deleteError } = await supabase.from('leaderboard').delete().neq('id', 0);
-  if (deleteError) throw deleteError;
-  if (entries.length > 0) {
-    const { error: insertError } = await supabase.from('leaderboard').insert(entries);
-    if (insertError) throw insertError;
-  }
+export const upsertLeaderboardEntry = async (
+  entry: Omit<LeaderboardEntry, 'id' | 'title'>
+): Promise<void> => {
+  const { error } = await supabase
+    .from('leaderboard')
+    .upsert(
+      {
+        name:      entry.name,
+        level:     entry.level,
+        score:     entry.score,
+        combo:     entry.combo,
+        timestamp: entry.timestamp,
+      },
+      { onConflict: 'name,level', ignoreDuplicates: false }
+    );
+  if (error) throw error;
 };
+
+// ── Titles ─────────────────────────────────────────────────────
 
 export const readTitles = async (): Promise<Title[]> => {
   const { data, error } = await supabase
     .from('titles')
-    .select('*')
-    .order('id');
+    .select('*');
   if (error) throw error;
   return data || [];
 };

@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import {
   readLeaderboard,
-  writeLeaderboard,
+  upsertLeaderboardEntry,
   readUsers,
   LeaderboardEntry,
 } from '@/lib/db';
@@ -49,36 +49,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Score must be a positive integer.' }, { status: 400 });
   }
 
-  const entries  = await readLeaderboard();
-  const username = session.user;
+  const username       = session.user;
+  const existingEntries = await readLeaderboard();
 
-  const idx = entries.findIndex(
+  const existing = existingEntries.find(
     e =>
       e.name.toLowerCase()  === username.toLowerCase() &&
       e.level.toLowerCase() === level.toLowerCase()
   );
 
-  let newTotal: number;
+  const newTotal = (existing?.score ?? 0) + score;
+  const newCombo = Math.max(existing?.combo ?? 0, combo);
 
-  if (idx !== -1) {
-    // Accumulate score; keep highest combo
-    newTotal           = (entries[idx].score ?? 0) + score;
-    entries[idx].score = newTotal;
-    entries[idx].combo = Math.max(entries[idx].combo ?? 0, combo);
-    entries[idx].timestamp = new Date().toISOString();
-  } else {
-    newTotal = score;
-    entries.push({
-      name:      username,
-      level,
-      score:     newTotal,
-      combo,
-      timestamp: new Date().toISOString(),
-    });
-  }
-
-  entries.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-  await writeLeaderboard(entries);
+  await upsertLeaderboardEntry({
+    name:      username,
+    level,
+    score:     newTotal,
+    combo:     newCombo,
+    timestamp: new Date().toISOString(),
+  });
 
   return NextResponse.json({ ok: true, newTotal });
-}
+}                         

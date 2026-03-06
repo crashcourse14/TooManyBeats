@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { getSession } from '@/lib/session';
-import { readUsers, writeUsers } from '@/lib/db';
+import { readUsers, createUser } from '@/lib/db';
 
 // ── GET /api/auth?action=me ────────────────────────────────────
 export async function GET(req: NextRequest) {
@@ -92,7 +92,8 @@ export async function POST(req: NextRequest) {
       created_at:    new Date().toISOString(),
     };
 
-    await writeUsers([...users, newUser]);
+    // insert the new row instead of overwriting the whole table
+    await createUser(newUser);
 
     const session = await getSession();
     session.user  = username;

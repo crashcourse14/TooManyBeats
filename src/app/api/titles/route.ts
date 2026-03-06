@@ -24,7 +24,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
-import { readTitles, readUsers, writeUsers } from '@/lib/db';
+import { readTitles, readUsers, updateUser } from '@/lib/db';
 
 // ── GET /api/titles ────────────────────────────────────────────
 export async function GET() {
@@ -83,7 +83,8 @@ export async function POST(req: NextRequest) {
   }
 
   users[idx].active_title = newTitle === '' ? null : newTitle;
-  await writeUsers(users);
+  // only update the current user instead of rewriting every record
+  await updateUser(session.user!, { active_title: users[idx].active_title });
 
   return NextResponse.json({ ok: true, activeTitle: users[idx].active_title });
 }
