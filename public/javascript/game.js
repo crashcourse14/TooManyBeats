@@ -145,6 +145,7 @@ async function loadAllLevels() {
 
     for (let i = 0; i < LEVEL_FILES.length; i++) {
         const file = LEVEL_FILES[i];
+        console.log(`Loading level file: ${file.toUpperCase()}`);
         subEl.textContent = `LOADING ${file.toUpperCase()}`;
         barEl.style.width = ((i / LEVEL_FILES.length) * 80) + '%';
         try {
@@ -1053,6 +1054,7 @@ let lbData        = null;
 let lbFilterLevel = 'all';
 
 async function loadLeaderboard() {
+    console.log("Fetching leaderboard data...");
     if (lbData) { renderLeaderboard(); refreshLeaderboard(); return; }
     document.getElementById('lb-list').innerHTML = '<div class="lb-msg">LOADING…</div>';
     await refreshLeaderboard();
@@ -1060,6 +1062,7 @@ async function loadLeaderboard() {
 }
 
 async function refreshLeaderboard() {
+    console.log("Refreshing leaderboard data...");
     try {
         const res = await fetch('/api/leaderboard');
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1068,6 +1071,7 @@ async function refreshLeaderboard() {
             renderLeaderboard();
         }
     } catch (e) {
+        console.log('Failed to load leaderboard:', e.message);
         document.getElementById('lb-list').innerHTML =
             `<div class="lb-msg error">COULD NOT LOAD LEADERBOARD<br>
              <span style="font-size:9px;opacity:.5">${e.message}</span></div>`;
@@ -1089,6 +1093,7 @@ async function submitScore(runScore, peakCombo) {
         if (data.ok) {
             await refreshLeaderboard();
             showToast(`+${runScore.toLocaleString()} SAVED · TOTAL: ${(data.newTotal || runScore).toLocaleString()}`);
+            console.log("Saving score succeeded:", data);
         }
     } catch (e) {
         console.warn('Score submit failed:', e.message);
@@ -1733,6 +1738,8 @@ function completeLevel() {
 function advanceToNextLevel() {
     if (currentLevelIndex < levels.length - 1) {
         activateLevel(currentLevelIndex + 1);
+
+        Logger.info("Advancing to next level:", currentLevel.name);
         startGame();
     } else {
         state = 'title';
