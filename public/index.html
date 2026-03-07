@@ -279,11 +279,18 @@
   }
 
   .lb-title.t-owner {
-    color: pink;
+    color: rgb(239, 111, 208);
     background: rgba(255,255,255,0.1);
-    border-color: rgba(255, 0, 174, 0.45);
-    text-shadow: 0 0 10px rgba(255, 0, 174, 0.9), 0 0 20px rgba(255,255,255,0.4);
-    box-shadow: 0 0 10px rgba(255, 0, 174, 0.12);
+    border-color: rgba(239, 111, 208, 0.45);
+    text-shadow: 0 0 10px rgba(239, 111, 208, 0.9), 0 0 20px rgba(255,255,255,0.4);
+    box-shadow: 0 0 10px rgba(239, 111, 208, 0.12);
+  }
+  .lb-title.t-orange {
+    color: orange;
+    background: rgba(255,165,0,0.1);
+    border-color: rgba(255,165,0,0.45);
+    text-shadow: 0 0 10px rgba(255,165,0,0.9), 0 0 20px rgba(255,255,255,0.4);
+    box-shadow: 0 0 10px rgba(255,165,0,0.12);
   }
   /* Top 10 — deep crimson red */
   .lb-title.t-top10 {
@@ -583,7 +590,6 @@
     </div>
   </div>
   <button id="cw-continue" onclick="dismissContentWarning()">I UNDERSTAND — LET'S PLAY</button>
-  <button id="cw-skip" onclick="dismissContentWarning()">skip</button>
 </div>
 
 <!-- ══ NEWS SCREEN ══ -->
@@ -648,7 +654,6 @@
 
   <div id="news-footer">
     <button id="news-continue-btn" onclick="dismissNews()">LET'S PLAY ▶</button>
-    <button id="news-skip-btn"     onclick="dismissNews()">skip</button>
   </div>
 </div><!-- /#news-screen -->
 

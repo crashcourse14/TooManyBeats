@@ -1127,6 +1127,9 @@ function getTitleBadgeHTML(entry) {
     } else if (titleId.includes('Owner')) {
         cls = 't-owner';
         label = 'Owner';
+    } else if (titleId.includes('Orange')) {
+        cls = 't-orange';
+        label = 'Orange';
     }
 
     return `<span class="lb-title ${cls}">${label}</span>`;

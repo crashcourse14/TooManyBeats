@@ -1,0 +1,15 @@
+{
+  "name": "Machine Love - Kasane Teto",
+  "song": "audio/Machine Love - Kasane Teto.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 14,
+  "spawnRate": 78,
+  "speedRampRate": 0.0005,
+  "numLanes": 2,
+  "laneTheme": "neon",
+  "beatDrop": 113,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration": 446
+}
