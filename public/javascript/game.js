@@ -1126,7 +1126,7 @@ function getTitleBadgeHTML(entry) {
         label = 'Fan Favourite';
     } else if (titleId.includes('Owner')) {
         cls = 't-owner';
-        label = 'The Creator </>';
+        label = 'Owner';
     }
 
     return `<span class="lb-title ${cls}">${label}</span>`;
