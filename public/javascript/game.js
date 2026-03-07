@@ -1167,12 +1167,6 @@ function renderLeaderboard() {
             }) : '';
         const meta = [dateStr, entry.combo ? `x${entry.combo} COMBO` : ''].filter(Boolean).join('  ·  ');
         const barPct = Math.round(((entry.score || 0) / maxScore) * 100);
-        // Assign title based on rank if not provided
-        if (!entry.title) {
-            if (rank === 1) entry.title = 'Season 1 Top Player';
-            else if (rank <= 10) entry.title = 'Season 1 Top 10';
-            else if (rank <= 225) entry.title = 'Top 225';
-        }
         const titleHTML = getTitleBadgeHTML(entry);
 
         return `
