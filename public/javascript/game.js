@@ -1109,9 +1109,9 @@ function getTitleBadgeHTML(entry) {
     let cls = 't-custom';
     let label = titleId;
 
-    if (titleId === 'Season 1 Top Player') {
+    if (titleId === 'Top Player') {
         cls = 't-TopPlayer';
-    } else if (titleId === 'Season 1 Top 10') {
+    } else if (titleId === 'Top 10') {
         cls = 't-top10';
     } else if (titleId.includes('Top 225') || titleId.includes('Top 100')) {
         cls = 't-top225';
@@ -1124,6 +1124,9 @@ function getTitleBadgeHTML(entry) {
     } else if (titleId.includes('custom')) {
         cls = 't-custom';
         label = 'Fan Favourite';
+    } else if (titleId.includes('Owner')) {
+        cls = 't-owner';
+        label = 'The Creator </>';
     }
 
     return `<span class="lb-title ${cls}">${label}</span>`;
