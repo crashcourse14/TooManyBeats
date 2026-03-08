@@ -2512,16 +2512,25 @@ function mmShowResults(winner) {
 
 function mmReturnToMenu() {
     mmHideAll();
-    mmInMatch    = false;
-    mmMatchId    = null;
-    mmOpponent   = null;
-    mmLevelIndex = null;
+    mmInMatch     = false;
+    mmMatchId     = null;
+    mmOpponent    = null;
+    mmLevelIndex  = null;
     clearInterval(mmPollTimer);
     clearInterval(mmScoreTimer);
     clearInterval(mmOnlineTimer);
-    mmPollTimer  = null;
-    mmScoreTimer = null;
+    mmPollTimer   = null;
+    mmScoreTimer  = null;
     mmOnlineTimer = null;
+
+    // Hide all game HUD elements so they don't bleed through the main menu
+    document.getElementById('ui').style.display          = 'none';
+    document.getElementById('powerup-bar').style.display = 'none';
+
+    // Reset game state so the canvas draws idle (no dead/playing overlay)
+    state = 'title';
+    stopAudio();
+
     showMainMenu();
 }
 
