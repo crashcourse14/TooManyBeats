@@ -1,0 +1,15 @@
+{
+  "name": "Battle Against a True Hero - Falkkone",
+  "song": "audio/Battle Against a True Hero - Falkkone.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 18,
+  "spawnRate": 80,
+  "speedRampRate": 0.0004,
+  "numLanes": 2,
+  "laneTheme": "neon",
+  "beatDrop": 19,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": 1.6,
+  "levelDuration": 248
+}

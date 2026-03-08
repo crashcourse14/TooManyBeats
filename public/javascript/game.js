@@ -56,6 +56,28 @@ let currentLevel = null;
 let currentLevelIndex = 0;
 
 // ──────────────────────────────────────────────────────────
+//  SCORE MULTIPLIERS
+//
+//  Example:
+//    { level: 'BONUS STAGE', multiplier: 2.5 },
+//    { level: 'HARD MODE',   multiplier: 3   },
+// ──────────────────────────────────────────────────────────
+const SCORE_MULTIPLIERS = [
+    { level: 'Battle Against a True Hero - Falkkone', multiplier: 2 },
+];
+
+/**
+ * Returns the score multiplier for the current level, or 1 if none is set.
+ */
+function getLevelScoreMultiplier() {
+    if (!currentLevel || !currentLevel.name) return 1;
+    const entry = SCORE_MULTIPLIERS.find(
+        m => m.level.toLowerCase() === currentLevel.name.toLowerCase()
+    );
+    return entry ? entry.multiplier : 1;
+}
+
+// ──────────────────────────────────────────────────────────
 //  AUDIO
 // ──────────────────────────────────────────────────────────
 
@@ -670,7 +692,7 @@ function drawBeatDropOverlay(elapsedSec) {
             fadeIn = Math.min(t / 0.5, 1);
         const calmIn = calmAt ? Math.max(0, (elapsedSec - (calmAt - 2)) / 2) : 0,
             alpha = fadeIn * (1 - calmIn) * 0.06;
-        if (alpha > 0) {
+        /*if (alpha > 0) {
             ctx.save();
             ctx.globalAlpha = alpha;
             ctx.fillStyle = '#ff00aa';
@@ -679,7 +701,7 @@ function drawBeatDropOverlay(elapsedSec) {
             ctx.textBaseline = 'middle';
             ctx.fillText('DROP', cx, cy);
             ctx.restore();
-        }
+        }*/
         const vAlpha = 0.12 + Math.sin(frame * 0.08) * 0.06;
         const vGrad = ctx.createRadialGradient(cx, cy, canvas.height * 0.2, cx, cy, canvas.height * 0.9);
         vGrad.addColorStop(0, 'transparent');
@@ -1735,7 +1757,9 @@ function movePlayer(dir) {
 
 function die() {
     state = 'dead';
-    const fs = Math.floor(score);
+    const mult = getLevelScoreMultiplier();
+    const fs   = Math.floor(score * mult);
+    if (mult > 1) floatText(canvas.width / 2, canvas.height / 2 - 80, `×${mult} SCORE BONUS!`, '#ffff00');
     if (fs > bestScore) {
         bestScore = fs;
         localStorage.setItem('neonshift_best', bestScore);
@@ -1751,7 +1775,9 @@ function die() {
 function completeLevel() {
     state = 'levelcomplete';
     levelCompleteTime = performance.now();
-    const fs = Math.floor(score);
+    const mult = getLevelScoreMultiplier();
+    const fs   = Math.floor(score * mult);
+    if (mult > 1) floatText(canvas.width / 2, canvas.height / 2 - 80, `×${mult} SCORE BONUS!`, '#ffff00');
     if (fs > bestScore) {
         bestScore = fs;
         localStorage.setItem('neonshift_best', bestScore);
