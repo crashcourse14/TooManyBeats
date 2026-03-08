@@ -17,6 +17,16 @@ window.addEventListener('mousemove', e => {
 document.getElementById('ui').style.display = 'none';
 document.getElementById('powerup-bar').style.display = 'none';
 
+const clickSound = new Audio("/audio/game/buttonClicked.mp3"); 
+
+// Global click listener
+document.addEventListener("click", function (event) {
+    if (event.target.tagName === "BUTTON") {
+        clickSound.currentTime = 0; 
+        clickSound.play();
+    }
+});
+
 // ──────────────────────────────────────────────────────────
 //  LEVEL SYSTEM
 // ──────────────────────────────────────────────────────────
