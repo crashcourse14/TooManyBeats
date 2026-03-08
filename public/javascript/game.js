@@ -64,7 +64,6 @@ let currentLevelIndex = 0;
 // ──────────────────────────────────────────────────────────
 const SCORE_MULTIPLIERS = [
     { level: 'Battle Against a True Hero - Falkkone', multiplier: 2 },
-    { level: 'MEGALOVANIA METAL - RichaadEB & ThunderScott', multiplier: 2 }
 ];
 
 /**
@@ -229,16 +228,13 @@ function drawMenuPlayer() {
 }
 
 function showMainMenu() {
-    // Hide all sub-screens and top-nav
     hideLevelSelect();
     menuScreen.classList.add('visible');
     backBtn.classList.remove('visible');
 
-    // Update login button label
     const lb = document.getElementById('menu-btn-login');
     if (lb) lb.textContent = loggedInUser ? `👤  PROFILE` : '⚡  LOGIN';
 
-    // Start idle animation
     if (menuAnimId) cancelAnimationFrame(menuAnimId);
     drawMenuPlayer();
 }
@@ -431,23 +427,25 @@ function lerp(a, b, t) {
 }
 
 function hslToRgb(h, s, l) {
-    h /= 360;
-    s /= 100;
-    l /= 100;
-    if (s === 0) {
-        const v = Math.round(l * 255);
-        return [v, v, v];
-    }
-    const q = l < 0.5 ? l * (1 + s) : l + s - l * s,
-        p = 2 * l - q;
+    h /= 360; s /= 100; l /= 100;
+    if (s === 0) { const v = Math.round(l * 255); return [v, v, v]; }
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
     const hue2 = t => {
         t = ((t % 1) + 1) % 1;
-        if (t < 1 / 6) return p + (q - p) * 6 * t;
-        if (t < 1 / 2) return q;
-        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        if (t < 1/6) return p + (q-p)*6*t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q-p)*(2/3-t)*6;
         return p;
     };
-    return [hue2(h + 1 / 3), hue2(h), hue2(h - 1 / 3)].map(v => Math.round(v * 255));
+    return [hue2(h+1/3), hue2(h), hue2(h-1/3)].map(v => Math.round(v*255));
+}
+
+function hexToRgb(hex) {
+    const h = hex.replace('#','');
+    if (h.length === 3) {
+        return [parseInt(h[0]+h[0],16), parseInt(h[1]+h[1],16), parseInt(h[2]+h[2],16)];
+    }
+    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
 }
 
 function roundRect(ctx, x, y, w, h, r) {
@@ -521,23 +519,11 @@ function spawnObstacles() {
 }
 
 function spawnPowerup() {
-    const lane = Math.floor(Math.random() * NUM_LANES);
-    const types = ['shield', 'slow', 'magnet'],
-        type = types[Math.floor(Math.random() * types.length)];
-    const emojis = {
-        shield: '🛡️',
-        slow: '⏱️',
-        magnet: '⚡'
-    };
-    powerups.push({
-        x: canvas.width + 20,
-        y: getLaneY(lane),
-        lane,
-        type,
-        emoji: emojis[type],
-        hue: globalHue,
-        pulse: 0
-    });
+    const lane  = Math.floor(Math.random() * NUM_LANES);
+    const types  = ['shield', 'slow', 'magnet', 'ghost', 'double'];
+    const type   = types[Math.floor(Math.random() * types.length)];
+    const emojis = { shield: '🛡️', slow: '⏱️', magnet: '⚡', ghost: '👻', double: '✖️' };
+    powerups.push({ x: canvas.width + 20, y: getLaneY(lane), lane, type, emoji: emojis[type], hue: globalHue, pulse: 0 });
 }
 
 // ──────────────────────────────────────────────────────────
@@ -608,15 +594,11 @@ function drawLanes() {
 
 function drawPlayer() {
     playerY = lerp(playerY, targetY, 0.2);
-    trails.push({
-        x: PLAYER_X,
-        y: playerY,
-        life: 1
-    });
+    trails.push({ x: PLAYER_X, y: playerY, life: 1 });
     if (trails.length > 18) trails.shift();
     for (let i = 0; i < trails.length; i++) {
         const t = i / trails.length,
-            a = t * 0.35,
+            a = t * (ghost ? 0.15 : 0.35),
             tw = lerp(4, PLAYER_W, t),
             th = lerp(4, PLAYER_H, t);
         ctx.fillStyle = `rgba(255,255,255,${a})`;
@@ -624,12 +606,11 @@ function drawPlayer() {
         roundRect(ctx, PLAYER_X + (PLAYER_W - tw) / 2, trails[i].y - th / 2, tw, th, 4);
         ctx.fill();
     }
-    const ph = (globalHue + playerLane * 60) % 360,
-        [r, g, b] = hslToRgb(ph, 100, 60);
-    const col = shield ? '#00ff88' : `rgb(${r},${g},${b})`;
-    ctx.shadowBlur = shield ? 40 : 20;
+    const col = getShipColor();
+    ctx.globalAlpha = ghost ? 0.35 : 1;
+    ctx.shadowBlur  = shield ? 40 : 20;
     ctx.shadowColor = col;
-    ctx.fillStyle = col;
+    ctx.fillStyle   = col;
     ctx.beginPath();
     roundRect(ctx, PLAYER_X, playerY - PLAYER_H / 2, PLAYER_W, PLAYER_H, 6);
     ctx.fill();
@@ -637,6 +618,7 @@ function drawPlayer() {
     ctx.beginPath();
     roundRect(ctx, PLAYER_X + PLAYER_W - 22, playerY - PLAYER_H / 2 + 5, 14, PLAYER_H - 10, 4);
     ctx.fill();
+    const [r, g, b] = col.startsWith('rgb') ? [0,255,255] : hexToRgb(col);
     const grad = ctx.createRadialGradient(PLAYER_X - 4, playerY, 0, PLAYER_X - 4, playerY, 22);
     grad.addColorStop(0, `rgba(${r},${g},${b},0.8)`);
     grad.addColorStop(1, 'transparent');
@@ -644,7 +626,8 @@ function drawPlayer() {
     ctx.beginPath();
     ctx.arc(PLAYER_X - 4, playerY, 12, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
+    ctx.shadowBlur   = 0;
+    ctx.globalAlpha  = 1;
 }
 
 function drawObstacles() {
@@ -1392,6 +1375,7 @@ async function checkExistingSession() {
             loggedInUser  = data.user;
             loggedInTitle = data.title;
             startPresencePing();
+            loadShipColor(); // load saved color from Supabase
         }
     } catch (_) {}
     refreshLoginPanel();
@@ -1529,6 +1513,10 @@ async function loadTitlePicker() {
     } catch (e) {
         wrap.innerHTML = `<div style="font-size:10px;color:#ff4466">Failed to load titles.</div>`;
     }
+
+    // Build ship color picker every time profile opens
+    await loadShipColor();
+    buildShipColorPicker();
 }
 
 async function pickTitle(titleId) {
@@ -1680,12 +1668,18 @@ function gameLoop() {
         o.x -= speed * sf;
         if (!o.scored && o.x + o.w < PLAYER_X) {
             o.scored = true;
-            score += combo * 10;
+            score += combo * 10 * (doubleScore ? 2 : 1);
             comboTimer = 120;
         }
         const px = PLAYER_X,
             py = playerY - PLAYER_H / 2;
         if (collides(px + 6, py + 3, PLAYER_W - 12, PLAYER_H - 6, o.x, o.y, o.w, o.h)) {
+            if (ghost) {
+                // Phase through — flash and continue
+                spawnParticles(o.x + o.w / 2, o.y + o.h / 2, 12, ['#ccccff', '#ffffff'], 5);
+                obstacles.splice(i, 1);
+                continue;
+            }
             if (shield) {
                 shield = false;
                 shieldTimer = 0;
@@ -1740,6 +1734,20 @@ function gameLoop() {
         if (!magnetTimer) {
             magnet = false;
             document.getElementById('pu-magnet').classList.remove('active');
+        }
+    }
+    if (ghostTimer > 0) {
+        ghostTimer--;
+        if (!ghostTimer) {
+            ghost = false;
+            document.getElementById('pu-ghost').classList.remove('active');
+        }
+    }
+    if (doubleTimer > 0) {
+        doubleTimer--;
+        if (!doubleTimer) {
+            doubleScore = false;
+            document.getElementById('pu-double').classList.remove('active');
         }
     }
     if (comboTimer > 0) {
@@ -1804,7 +1812,7 @@ function gameLoop() {
         puSpawnTimer = 0;
         puSpawnInterval = 250 + Math.random() * 150;
     }
-    if (magnet) score += combo * 0.5;
+    if (magnet) score += combo * 0.5 * (doubleScore ? 2 : 1);
 
     drawObstacles();
     drawPowerups();
@@ -1951,13 +1959,12 @@ function startGame() {
     floatingTexts = [];
     spawnTimer = 0;
     puSpawnTimer = 0;
-    shield = false;
-    shieldTimer = 0;
-    slowmo = false;
-    slowmoTimer = 0;
-    magnet = false;
-    magnetTimer = 0;
-    ['pu-shield', 'pu-slow', 'pu-magnet'].forEach(id => document.getElementById(id).classList.remove('active'));
+    shield = false; shieldTimer = 0;
+    slowmo = false; slowmoTimer = 0;
+    magnet = false; magnetTimer = 0;
+    ghost  = false; ghostTimer  = 0;
+    doubleScore = false; doubleTimer = 0;
+    ['pu-shield','pu-slow','pu-magnet','pu-ghost','pu-double'].forEach(id => document.getElementById(id).classList.remove('active'));
     const ce = document.getElementById('combo-val');
     ce.textContent = 'x1';
     ce.style.fontSize = '28px';
@@ -1974,19 +1981,26 @@ function startGame() {
 
 function activatePowerup(type) {
     if (type === 'shield') {
-        shield = true;
-        shieldTimer = 400;
+        shield = true; shieldTimer = 400;
         document.getElementById('pu-shield').classList.add('active');
     }
     if (type === 'slow') {
-        slowmo = true;
-        slowmoTimer = 360;
+        slowmo = true; slowmoTimer = 360;
         document.getElementById('pu-slow').classList.add('active');
     }
     if (type === 'magnet') {
-        magnet = true;
-        magnetTimer = 480;
+        magnet = true; magnetTimer = 480;
         document.getElementById('pu-magnet').classList.add('active');
+    }
+    if (type === 'ghost') {
+        ghost = true; ghostTimer = 360;
+        document.getElementById('pu-ghost').classList.add('active');
+        floatText(canvas.width / 2, canvas.height / 2 - 60, '👻 GHOST!', '#ccccff');
+    }
+    if (type === 'double') {
+        doubleScore = true; doubleTimer = 480;
+        document.getElementById('pu-double').classList.add('active');
+        floatText(canvas.width / 2, canvas.height / 2 - 60, '✖️ 2× SCORE!', '#ffff00');
     }
 }
 
@@ -2802,6 +2816,147 @@ function vcDestroy() {
     document.getElementById('mm-voice-bar').classList.remove('visible');
     document.getElementById('mm-voice-hint').classList.remove('visible');
 }
+// ──────────────────────────────────────────────────────────
+//  SHIP CUSTOMIZATION
+// ──────────────────────────────────────────────────────────
+
+const SHIP_COLORS = [
+    { id: 'auto',   label: 'AUTO',   hex: null },
+    { id: 'cyan',   label: 'CYAN',   hex: '#00ffff' },
+    { id: 'pink',   label: 'PINK',   hex: '#ff44cc' },
+    { id: 'green',  label: 'GREEN',  hex: '#00ff88' },
+    { id: 'orange', label: 'ORANGE', hex: '#ff8800' },
+    { id: 'red',    label: 'RED',    hex: '#ff2244' },
+    { id: 'gold',   label: 'GOLD',   hex: '#ffcc00' },
+    { id: 'white',  label: 'WHITE',  hex: '#ffffff' },
+    { id: 'purple', label: 'PURPLE', hex: '#aa44ff' },
+    { id: 'blue',   label: 'BLUE',   hex: '#2288ff' },
+];
+
+// Start from localStorage as a fast cache; Supabase overrides on profile open
+let playerShipColor = localStorage.getItem('tmb_ship_color') || 'auto';
+
+async function loadShipColor() {
+    if (!loggedInUser) return;
+    try {
+        const res  = await fetch('/api/profile');
+        const data = await res.json();
+        if (data.ship_color) {
+            playerShipColor = data.ship_color;
+            localStorage.setItem('tmb_ship_color', data.ship_color);
+        }
+    } catch { /* keep cached value */ }
+}
+
+async function saveShipColor(colorId) {
+    localStorage.setItem('tmb_ship_color', colorId); // instant local update
+    if (!loggedInUser) return;
+    try {
+        await fetch('/api/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ship_color: colorId }),
+        });
+    } catch { showToast('⚠ Could not save ship color'); }
+}
+
+function getShipColor() {
+    if (shield) return '#00ff88';
+    if (ghost)  return 'rgba(200,200,255,0.35)';
+    const entry = SHIP_COLORS.find(c => c.id === playerShipColor);
+    if (entry && entry.hex) return entry.hex;
+    // auto — hue cycle
+    const ph = (globalHue + playerLane * 60) % 360;
+    const [r, g, b] = hslToRgb(ph, 100, 60);
+    return `rgb(${r},${g},${b})`;
+}
+
+function buildShipColorPicker() {
+    const wrap = document.getElementById('ship-colors-wrap');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+
+    SHIP_COLORS.forEach(color => {
+        const btn = document.createElement('button');
+        btn.className = 'ship-color-btn' + (color.id === playerShipColor ? ' active' : '');
+        btn.title     = color.label;
+        btn.style.background = color.hex
+            ? color.hex
+            : 'conic-gradient(#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)';
+        btn.onclick = async () => {
+            playerShipColor = color.id;
+            wrap.querySelectorAll('.ship-color-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            drawShipPreview();
+            await saveShipColor(color.id);
+        };
+        wrap.appendChild(btn);
+    });
+
+    drawShipPreview();
+}
+
+function drawShipPreview() {
+    const canvas = document.getElementById('ship-preview-canvas');
+    if (!canvas) return;
+    const ctx2 = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    ctx2.clearRect(0, 0, W, H);
+    ctx2.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx2.fillRect(0, 0, W, H);
+
+    const entry = SHIP_COLORS.find(c => c.id === playerShipColor);
+    const col   = (entry && entry.hex) ? entry.hex : '#00ffff';
+
+    const px = W * 0.18, py = H / 2, pw = 60, ph = 22;
+
+    // Trail
+    for (let i = 0; i < 8; i++) {
+        const t = i / 8;
+        ctx2.fillStyle = `rgba(255,255,255,${t * 0.25})`;
+        ctx2.beginPath();
+        const tw = pw * t, th = ph * t;
+        ctx2.roundRect(px + (pw - tw) / 2, py - th / 2, tw, th, 3);
+        ctx2.fill();
+    }
+
+    // Body
+    ctx2.shadowBlur  = 18;
+    ctx2.shadowColor = col;
+    ctx2.fillStyle   = col;
+    ctx2.beginPath();
+    ctx2.roundRect(px, py - ph / 2, pw, ph, 5);
+    ctx2.fill();
+
+    // Cockpit
+    ctx2.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx2.beginPath();
+    ctx2.roundRect(px + pw - 18, py - ph / 2 + 4, 11, ph - 8, 3);
+    ctx2.fill();
+    ctx2.shadowBlur = 0;
+}
+
+// ──────────────────────────────────────────────────────────
+//  GHOST & 2× SCORE POWERUPS
+// ──────────────────────────────────────────────────────────
+
+let ghost       = false;
+let ghostTimer  = 0;
+let doubleScore = false;
+let doubleTimer = 0;
+
+// Hook into the existing game loop tick — called from updatePowerupTimers
+function updateNewPowerups() {
+    if (ghost && --ghostTimer <= 0) {
+        ghost = false;
+        document.getElementById('pu-ghost').classList.remove('active');
+    }
+    if (doubleScore && --doubleTimer <= 0) {
+        doubleScore = false;
+        document.getElementById('pu-double').classList.remove('active');
+    }
+}
+
 // ──────────────────────────────────────────────────────────
 
 loadAllLevels();

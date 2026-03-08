@@ -134,7 +134,8 @@
   .lane-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.15); transition: all 0.15s; }
   .lane-dot.active { background: white; box-shadow: 0 0 10px white, 0 0 20px white; transform: scale(1.5); }
   #powerup-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 10; pointer-events: none; }
-  .pu-icon { width: 40px; height: 40px; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 18px; opacity: 0.3; transition: all 0.3s; }
+  .pu-icon { width: 52px; height: 58px; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 20px; opacity: 0.3; transition: all 0.3s; }
+  .pu-label { font-family: 'Share Tech Mono', monospace; font-size: 7px; letter-spacing: 1px; color: rgba(255,255,255,0.7); text-align: center; line-height: 1; }
   .pu-icon.active { opacity: 1; border-color: white; box-shadow: 0 0 15px rgba(255,255,255,0.5); animation: pu-pulse 0.5s ease infinite alternate; }
   @keyframes pu-pulse { from { transform: scale(1); } to { transform: scale(1.1); } }
   #custom-cursor { position: fixed; width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.6); border-radius: 50%; pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); }
@@ -650,6 +651,30 @@
   }
   #profile-logout-btn:hover { color: #ff6666; border-color: rgba(255,80,80,0.5); }
 
+  /* ── Ship customization ── */
+  #ship-preview-wrap {
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+  }
+  #ship-preview-canvas {
+    border-radius: 10px;
+    background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.07);
+  }
+  #ship-colors-wrap {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px;
+  }
+  .ship-color-btn {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 2px solid transparent; cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  }
+  .ship-color-btn:hover  { transform: scale(1.18); }
+  .ship-color-btn.active {
+    border-color: white;
+    box-shadow: 0 0 10px currentColor;
+    transform: scale(1.22);
+  }
+
   /* ══ MATCHMAKING SCREENS ══ */
 
   /* Shared base for all MM screens */
@@ -1035,9 +1060,11 @@
   <div class="lane-dot" id="dot-2"></div>
 </div>
 <div id="powerup-bar">
-  <div class="pu-icon" id="pu-shield" title="Shield">🛡️</div>
-  <div class="pu-icon" id="pu-slow"   title="Slow-Mo">⏱️</div>
-  <div class="pu-icon" id="pu-magnet" title="Score Magnet">⚡</div>
+  <div class="pu-icon" id="pu-shield" title="Shield">🛡️<span class="pu-label">SHIELD</span></div>
+  <div class="pu-icon" id="pu-slow"   title="Slow-Mo">⏱️<span class="pu-label">SLOW</span></div>
+  <div class="pu-icon" id="pu-magnet" title="Score Magnet">⚡<span class="pu-label">MAGNET</span></div>
+  <div class="pu-icon" id="pu-ghost"  title="Ghost">👻<span class="pu-label">GHOST</span></div>
+  <div class="pu-icon" id="pu-double" title="2× Score">✖️<span class="pu-label">2× SCORE</span></div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -1167,6 +1194,12 @@
     <div id="profile-titles-wrap">
       <div style="font-size:10px;opacity:.35;letter-spacing:1px">Loading titles…</div>
     </div>
+
+    <div class="profile-section-label">SHIP COLOR</div>
+    <div id="ship-preview-wrap">
+      <canvas id="ship-preview-canvas" width="120" height="48"></canvas>
+    </div>
+    <div id="ship-colors-wrap"></div>
 
     <div class="profile-section-label">ACCOUNT</div>
     <button id="profile-logout-btn" onclick="logoutUser()">LOG OUT</button>
