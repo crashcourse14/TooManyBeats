@@ -456,6 +456,33 @@ function hexToRgb(hex) {
     return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
 }
 
+// ── Ship color — defined here so drawPlayer can always call getShipColor() ──
+
+const SHIP_COLORS = [
+    { id: 'auto',   label: 'AUTO',   hex: null },
+    { id: 'cyan',   label: 'CYAN',   hex: '#00ffff' },
+    { id: 'pink',   label: 'PINK',   hex: '#ff44cc' },
+    { id: 'green',  label: 'GREEN',  hex: '#00ff88' },
+    { id: 'orange', label: 'ORANGE', hex: '#ff8800' },
+    { id: 'red',    label: 'RED',    hex: '#ff2244' },
+    { id: 'gold',   label: 'GOLD',   hex: '#ffcc00' },
+    { id: 'white',  label: 'WHITE',  hex: '#ffffff' },
+    { id: 'purple', label: 'PURPLE', hex: '#aa44ff' },
+    { id: 'blue',   label: 'BLUE',   hex: '#2288ff' },
+];
+
+let playerShipColor = localStorage.getItem('tmb_ship_color') || 'auto';
+
+function getShipColor() {
+    if (shield) return '#00ff88';
+    if (ghost)  return 'rgba(200,200,255,0.35)';
+    const entry = SHIP_COLORS.find(c => c.id === playerShipColor);
+    if (entry && entry.hex) return entry.hex;
+    const ph = (globalHue + playerLane * 60) % 360;
+    const [r, g, b] = hslToRgb(ph, 100, 60);
+    return `rgb(${r},${g},${b})`;
+}
+
 function roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);
@@ -1627,6 +1654,7 @@ function collides(ax, ay, aw, ah, bx, by, bw, bh) {
 // ──────────────────────────────────────────────────────────
 
 function gameLoop() {
+    try {
     frame++;
     globalHue = (globalHue + 0.6) % 360;
     if (screenShake > 0) {
@@ -1707,7 +1735,7 @@ function gameLoop() {
     // Power-ups
     for (let i = powerups.length - 1; i >= 0; i--) {
         const pu = powerups[i];
-        pu.x -= speed * sf;
+        pu.x -= speed;
         if (Math.hypot(pu.x - (PLAYER_X + PLAYER_W / 2), pu.y - playerY) < 36) {
             activatePowerup(pu.type);
             spawnParticles(pu.x, pu.y, 25, getAccentColors(), 7);
@@ -1847,6 +1875,25 @@ function gameLoop() {
     document.getElementById('powerup-bar').style.display = uiVisible ? 'flex' : 'none';
 
     requestAnimationFrame(gameLoop);
+
+    } catch (err) {
+        console.error('[TMB] Game loop crashed:', err);
+        // Show visible error banner so we can actually see what broke
+        const banner = document.getElementById('tmb-crash-banner') || (() => {
+            const b = document.createElement('div');
+            b.id = 'tmb-crash-banner';
+            Object.assign(b.style, {
+                position:'fixed', bottom:'10px', left:'10px', right:'10px',
+                background:'rgba(180,0,0,0.9)', color:'white', padding:'12px 16px',
+                fontFamily:'monospace', fontSize:'12px', borderRadius:'8px',
+                zIndex:'99999', whiteSpace:'pre-wrap', wordBreak:'break-all',
+            });
+            document.body.appendChild(b);
+            return b;
+        })();
+        banner.textContent = '⚠ GAME LOOP ERROR (music keeps playing but rendering stopped):\n' + err.stack;
+        requestAnimationFrame(gameLoop); // keep trying so it self-recovers if possible
+    }
 }
 
 // ──────────────────────────────────────────────────────────
@@ -2805,59 +2852,8 @@ function vcDestroy() {
     document.getElementById('mm-voice-hint').classList.remove('visible');
 }
 // ──────────────────────────────────────────────────────────
-//  SHIP CUSTOMIZATION
+//  SHIP CUSTOMIZATION  (picker/save functions defined below)
 // ──────────────────────────────────────────────────────────
-
-const SHIP_COLORS = [
-    { id: 'auto',   label: 'AUTO',   hex: null },
-    { id: 'cyan',   label: 'CYAN',   hex: '#00ffff' },
-    { id: 'pink',   label: 'PINK',   hex: '#ff44cc' },
-    { id: 'green',  label: 'GREEN',  hex: '#00ff88' },
-    { id: 'orange', label: 'ORANGE', hex: '#ff8800' },
-    { id: 'red',    label: 'RED',    hex: '#ff2244' },
-    { id: 'gold',   label: 'GOLD',   hex: '#ffcc00' },
-    { id: 'white',  label: 'WHITE',  hex: '#ffffff' },
-    { id: 'purple', label: 'PURPLE', hex: '#aa44ff' },
-    { id: 'blue',   label: 'BLUE',   hex: '#2288ff' },
-];
-
-// Start from localStorage as a fast cache; Supabase overrides on profile open
-let playerShipColor = localStorage.getItem('tmb_ship_color') || 'auto';
-
-async function loadShipColor() {
-    if (!loggedInUser) return;
-    try {
-        const res  = await fetch('/api/profile');
-        const data = await res.json();
-        if (data.ship_color) {
-            playerShipColor = data.ship_color;
-            localStorage.setItem('tmb_ship_color', data.ship_color);
-        }
-    } catch { /* keep cached value */ }
-}
-
-async function saveShipColor(colorId) {
-    localStorage.setItem('tmb_ship_color', colorId); // instant local update
-    if (!loggedInUser) return;
-    try {
-        await fetch('/api/profile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ship_color: colorId }),
-        });
-    } catch { showToast('⚠ Could not save ship color'); }
-}
-
-function getShipColor() {
-    if (shield) return '#00ff88';
-    if (ghost)  return 'rgba(200,200,255,0.35)';
-    const entry = SHIP_COLORS.find(c => c.id === playerShipColor);
-    if (entry && entry.hex) return entry.hex;
-    // auto — hue cycle
-    const ph = (globalHue + playerLane * 60) % 360;
-    const [r, g, b] = hslToRgb(ph, 100, 60);
-    return `rgb(${r},${g},${b})`;
-}
 
 function buildShipColorPicker() {
     const wrap = document.getElementById('ship-colors-wrap');
