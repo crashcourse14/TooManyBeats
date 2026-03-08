@@ -1,0 +1,15 @@
+{
+  "name": "MEGALOVANIA METAL - RichaadEB & ThunderScott",
+  "song": "audio/MEGALOVANIA METAL - RichaadEB & ThunderScott.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 20,
+  "spawnRate": 80,
+  "speedRampRate": 0.0005,
+  "numLanes": 2,
+  "laneTheme": "neon",
+  "beatDrop": null,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration": 332
+}

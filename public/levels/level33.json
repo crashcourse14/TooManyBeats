@@ -1,0 +1,15 @@
+{
+  "name": "Training Season - Dua Lipa.mp3",
+  "song": "audio/Training Season - Dua Lipa.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 16,
+  "spawnRate": 80,
+  "speedRampRate": 0.0002,
+  "numLanes": 3,
+  "laneTheme": "neon",
+  "beatDrop": null,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration": 346
+}

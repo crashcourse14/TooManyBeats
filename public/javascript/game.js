@@ -64,6 +64,7 @@ let currentLevelIndex = 0;
 // ──────────────────────────────────────────────────────────
 const SCORE_MULTIPLIERS = [
     { level: 'Battle Against a True Hero - Falkkone', multiplier: 2 },
+    { level: 'MEGALOVANIA METAL - RichaadEB & ThunderScott', multiplier: 2 }
 ];
 
 /**

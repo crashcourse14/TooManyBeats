@@ -1,0 +1,15 @@
+{
+  "name": "DANCE MONKEY - TONES AND I",
+  "song": "audio/DANCE MONKEY - TONES AND I.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 17,
+  "spawnRate": 60,
+  "speedRampRate": 0.0003,
+  "numLanes": 2,
+  "laneTheme": "neon",
+  "beatDrop": null,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration": 346
+}
