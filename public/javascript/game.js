@@ -2036,7 +2036,6 @@ function activatePowerup(type) {
     if (type === 'ghost') {
         ghost = true; ghostTimer = 360;
         document.getElementById('pu-ghost').classList.add('active');
-        floatText(canvas.width / 2, canvas.height / 2 - 60, '👻 GHOST!', '#ccccff');
     }
     if (type === 'double') {
         doubleScore = true; doubleTimer = 480;
