@@ -15,6 +15,7 @@ out/
 # ── Data files (live server data, not for Git) ────────────
 data/users.json
 data/leaderboard.json
+data/game.config.ts
 
 # ── OS / editor junk ──────────────────────────────────────
 .DS_Store
