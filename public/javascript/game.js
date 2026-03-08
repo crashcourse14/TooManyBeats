@@ -389,8 +389,6 @@ let screenShake = 0,
     globalHue = 0;
 let shield = false,
     shieldTimer = 0,
-    slowmo = false,
-    slowmoTimer = 0,
     magnet = false,
     magnetTimer = 0;
 let obstacles = [],
@@ -530,9 +528,9 @@ function spawnObstacles() {
 
 function spawnPowerup() {
     const lane  = Math.floor(Math.random() * NUM_LANES);
-    const types  = ['shield', 'slow', 'magnet', 'ghost', 'double'];
+    const types  = ['shield', 'magnet', 'ghost', 'double'];
     const type   = types[Math.floor(Math.random() * types.length)];
-    const emojis = { shield: '🛡️', slow: '⏱️', magnet: '⚡', ghost: '👻', double: '✖️' };
+    const emojis = { shield: '🛡️', magnet: '⚡', ghost: '👻', double: '✖️' };
     powerups.push({ x: canvas.width + 20, y: getLaneY(lane), lane, type, emoji: emojis[type], hue: globalHue, pulse: 0 });
 }
 
@@ -560,9 +558,8 @@ function drawBackground() {
 }
 
 function drawStars() {
-    const sf = slowmo ? 0.3 : 1;
     for (const s of stars) {
-        s.x -= s.speed * sf * (speed / BASE_SPEED_CONST) * 0.4;
+        s.x -= s.speed * (speed / BASE_SPEED_CONST) * 0.4;
         if (s.x < 0) {
             s.x = canvas.width;
             s.y = Math.random() * canvas.height;
@@ -1670,12 +1667,11 @@ function gameLoop() {
     }
 
     drawLanes();
-    const sf = slowmo ? 0.35 : 1;
 
     // Obstacles
     for (let i = obstacles.length - 1; i >= 0; i--) {
         const o = obstacles[i];
-        o.x -= speed * sf;
+        o.x -= speed;
         if (!o.scored && o.x + o.w < PLAYER_X) {
             o.scored = true;
             score += combo * 10 * (doubleScore ? 2 : 1);
@@ -1730,13 +1726,6 @@ function gameLoop() {
         if (!shieldTimer) {
             shield = false;
             document.getElementById('pu-shield').classList.remove('active');
-        }
-    }
-    if (slowmoTimer > 0) {
-        slowmoTimer--;
-        if (!slowmoTimer) {
-            slowmo = false;
-            document.getElementById('pu-slow').classList.remove('active');
         }
     }
     if (magnetTimer > 0) {
@@ -1970,11 +1959,10 @@ function startGame() {
     spawnTimer = 0;
     puSpawnTimer = 0;
     shield = false; shieldTimer = 0;
-    slowmo = false; slowmoTimer = 0;
     magnet = false; magnetTimer = 0;
     ghost  = false; ghostTimer  = 0;
     doubleScore = false; doubleTimer = 0;
-    ['pu-shield','pu-slow','pu-magnet','pu-ghost','pu-double'].forEach(id => document.getElementById(id).classList.remove('active'));
+    ['pu-shield','pu-magnet','pu-ghost','pu-double'].forEach(id => document.getElementById(id).classList.remove('active'));
     const ce = document.getElementById('combo-val');
     ce.textContent = 'x1';
     ce.style.fontSize = '28px';
@@ -1993,10 +1981,6 @@ function activatePowerup(type) {
     if (type === 'shield') {
         shield = true; shieldTimer = 400;
         document.getElementById('pu-shield').classList.add('active');
-    }
-    if (type === 'slow') {
-        slowmo = true; slowmoTimer = 360;
-        document.getElementById('pu-slow').classList.add('active');
     }
     if (type === 'magnet') {
         magnet = true; magnetTimer = 480;
@@ -2282,12 +2266,7 @@ async function mmPoll() {
         });
         const data = await res.json();
 
-        if (data.status === 'matched') {
-            clearInterval(mmPollTimer);
-            mmPollTimer = null;
-            mmLog(`Opponent found: ${data.opponent}!`, 'ok');
-            await mmOnMatched(data);
-        } else if (data.status === 'expired') {
+        if (data.status === 'expired') {
             clearInterval(mmPollTimer);
             mmPollTimer = null;
             mmLog('Queue expired. Try again.', 'warn');
@@ -2402,7 +2381,8 @@ function mmPopulateCard(titleElId, statsElId, info) {
 
     statsEl.innerHTML =
         `<strong>#${info.rank ?? '—'}</strong> LEADERBOARD<br>` +
-        `BEST: <strong>${(info.bestScore ?? 0).toLocaleString()}</strong>`;
+        `BEST: <strong>${(info.bestScore ?? 0).toLocaleString()}</strong>` +
+        `TITLE: <strong>${info.active_title ?? 'No Title'}</strong>`;
 }
 
 function mmCountdown() {
@@ -2564,7 +2544,6 @@ function mmReturnToMenu() {
     mmPollTimer   = null;
     mmScoreTimer  = null;
     mmOnlineTimer = null;
-
     // Destroy voice chat
     vcDestroy();
 
