@@ -258,7 +258,18 @@ function goToScreen(tab) {
 
 // Back button — return to main menu from any sub-screen
 function goToMainMenu() {
-    hideLevelSelect();
+    // Explicitly hide every sub-screen so nothing lingers
+    lsOverlay.classList.remove('visible');
+    lbPanel.classList.remove('visible');
+    linksPanel.classList.remove('visible');
+    loginPanel.classList.remove('visible');
+    lsLaunch.classList.remove('visible');
+    topNav.classList.remove('visible');
+    backBtn.classList.remove('visible');
+
+    // Reset tab so startGame() can't fire until Levels is opened again
+    currentTitleTab = '';
+
     showMainMenu();
 }
 //  LOADING
@@ -274,7 +285,6 @@ async function loadAllLevels() {
 
     for (let i = 0; i < LEVEL_FILES.length; i++) {
         const file = LEVEL_FILES[i];
-        console.log(`Loading level file: ${file.toUpperCase()}`);
         subEl.textContent = `LOADING LEVELS`;
         barEl.style.width = ((i / LEVEL_FILES.length) * 80) + '%';
         try {
@@ -1910,6 +1920,8 @@ function advanceToNextLevel() {
 }
 
 function startGame() {
+    // Never start if main menu is showing
+    if (menuScreen.classList.contains('visible')) return;
     // Only allow starting from levels screen, death screen, or level complete screen
     if (!(currentTitleTab === 'levels' || state === 'dead' || state === 'levelcomplete')) return;
 
@@ -1980,13 +1992,15 @@ window.addEventListener('keydown', e => {
             combo = 0;
             score = 0;
             state = 'title';
+            document.getElementById('ui').style.display = 'none';
+            document.getElementById('powerup-bar').style.display = 'none';
             showLevelSelect();
         }
         return;
     }
     if (e.code === 'Space') {
         e.preventDefault();
-        if (state === 'title') {
+        if (state === 'title' && currentTitleTab === 'levels') {
             startGame();
             return;
         }
@@ -2056,7 +2070,7 @@ window.addEventListener('touchstart', e => {
 window.addEventListener('touchend', e => {
     // If the touch target is inside a UI panel or button, let it handle itself
     const target = e.target;
-    const isUI = target.closest('#top-nav, #level-select, #leaderboard-panel, #links-panel, #login-panel, #ls-launch, #news-screen, #content-warning, #loading-screen #main-menu'); 
+    const isUI = target.closest('#top-nav, #level-select, #leaderboard-panel, #links-panel, #login-panel, #ls-launch, #news-screen, #content-warning, #loading-screen');
     if (isUI) { touchStartY = touchStartX = touchStartTime = null; return; }
 
     if (state === 'title') { touchStartY = touchStartX = touchStartTime = null; return; }

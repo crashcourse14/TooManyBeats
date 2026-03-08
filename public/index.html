@@ -142,11 +142,10 @@
   /* ══ MAIN MENU SCREEN ══ */
   #main-menu {
     position: fixed; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    z-index: 22; pointer-events: none; opacity: 0;
-    transition: opacity 0.4s ease;
+    display: none; align-items: center; justify-content: center;
+    z-index: 22;
   }
-  #main-menu.visible { opacity: 1; pointer-events: all; }
+  #main-menu.visible { display: flex; }
 
   /* Static player drawn on a canvas behind the buttons */
   #menu-canvas {
@@ -195,6 +194,7 @@
     opacity: 0.3;
     cursor: not-allowed;
   }
+  
   .menu-btn:hover::before { opacity: 1; }
   .menu-btn:active { transform: translateX(4px) scale(0.98); }
 
@@ -258,13 +258,11 @@
 
   /* ══ LEVEL SELECT ══ */
   #level-select {
-    position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
-    z-index: 20; pointer-events: none; opacity: 0;
-    transform: translateY(16px);
-    transition: opacity 0.4s ease, transform 0.4s ease;
+    position: fixed; inset: 0; display: none; flex-direction: column; align-items: center;
+    z-index: 20;
     padding-top: 54px;
   }
-  #level-select.visible { pointer-events: all; opacity: 1; transform: translateY(0); }
+  #level-select.visible { display: flex; }
   #ls-title { margin-top: 10px; font-family: 'Orbitron', monospace; font-size: clamp(22px, 4vw, 48px); font-weight: 900; color: white; letter-spacing: 4px; text-shadow: 0 0 30px cyan, 0 0 60px rgba(0,255,255,0.25); pointer-events: none; line-height: 1; }
   #ls-sub { margin-top: 4px; font-family: 'Share Tech Mono', monospace; font-size: clamp(13px, 2vw, 20px); letter-spacing: 3px; color: rgba(255,255,255,0.35); pointer-events: none; }
   #ls-search-wrap { margin-top: 14px; position: relative; width: min(420px, 90vw); }
@@ -298,8 +296,8 @@
   .ls-no-results { grid-column: 1/-1; text-align: center; font-family: 'Share Tech Mono', monospace; font-size: 13px; color: rgba(255,255,255,0.25); padding: 40px 0; letter-spacing: 2px; }
 
   /* launch bar */
-  #ls-launch { position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 0 20px; display: flex; flex-direction: column; align-items: center; gap: 5px; background: linear-gradient(transparent, rgba(0,0,0,0.97) 38%); pointer-events: none; z-index: 21; opacity: 0; transition: opacity 0.35s ease; }
-  #ls-launch.visible { opacity: 1; pointer-events: all; }
+  #ls-launch { position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 0 20px; display: none; flex-direction: column; align-items: center; gap: 5px; background: linear-gradient(transparent, rgba(0,0,0,0.97) 38%); z-index: 21; }
+  #ls-launch.visible { display: flex; }
   #ls-launch-hint { font-family: 'Orbitron', monospace; font-size: 15px; font-weight: 700; color: white; letter-spacing: 3px; }
   #ls-launch-sub { font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 2px; color: rgba(255,255,255,0.3); }
   /* Mobile launch button — hidden on desktop, shown on touch devices */
@@ -322,13 +320,11 @@
 
   /* ══ SHARED PANEL — smooth slide+fade ══ */
   .side-panel {
-    position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
-    z-index: 20; pointer-events: none; opacity: 0;
-    transform: translateY(16px);
-    transition: opacity 0.4s ease, transform 0.4s ease;
+    position: fixed; inset: 0; display: none; flex-direction: column; align-items: center;
+    z-index: 20;
     padding-top: 68px;
   }
-  .side-panel.visible { pointer-events: all; opacity: 1; transform: translateY(0); }
+  .side-panel.visible { display: flex; }
   .panel-heading { font-family: 'Orbitron', monospace; font-size: clamp(20px, 3.5vw, 40px); font-weight: 900; color: white; letter-spacing: 4px; line-height: 1; }
   .panel-sub { margin-top: 5px; font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 3px; color: rgba(255,255,255,0.3); }
   .panel-body { margin-top: 20px; width: min(780px, 94vw); flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overflow-x: hidden; padding-bottom: 40px; }
@@ -521,13 +517,11 @@
 
   /* ══ LOGIN / REGISTER / PROFILE PANEL ══ */
   #login-panel {
-    position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center;
+    position: fixed; inset: 0; display: none; flex-direction: column; align-items: center;
     justify-content: flex-start; overflow-y: auto;
-    z-index: 20; pointer-events: none; opacity: 0;
-    transition: opacity 0.3s, transform 0.3s; padding: 76px 16px 40px;
-    transform: translateY(10px);
+    z-index: 20; padding: 76px 16px 40px;
   }
-  #login-panel.visible { pointer-events: all; opacity: 1; transform: translateY(0); }
+  #login-panel.visible { display: flex; }
 
   /* Tab row (Login / Create Account) */
   #auth-tab-row {
@@ -808,10 +802,10 @@
 
 <!-- Top nav bar (hidden — kept for JS compatibility) -->
 <div id="top-nav" style="display:none">
-  <button class="nav-btn active-tab" id="nav-btn-levels" onclick="showTitleScreen('levels')">▤ LEVELS</button>
-  <button class="nav-btn" id="nav-btn-leaderboard" onclick="showTitleScreen('leaderboard')">🏆 LEADERBOARD</button>
-  <button class="nav-btn" id="nav-btn-links" onclick="showTitleScreen('links')">🔗 LINKS</button>
-  <button class="nav-btn" id="nav-btn-login" onclick="showTitleScreen('login')">⚡ LOGIN</button>
+  <button class="nav-btn active-tab" id="nav-btn-levels"      onclick="showTitleScreen('levels')">▤ LEVELS</button>
+  <button class="nav-btn"            id="nav-btn-leaderboard" onclick="showTitleScreen('leaderboard')">🏆 LEADERBOARD</button>
+  <button class="nav-btn"            id="nav-btn-links"       onclick="showTitleScreen('links')">🔗 LINKS</button>
+  <button class="nav-btn"            id="nav-btn-login"       onclick="showTitleScreen('login')">⚡ LOGIN</button>
 </div>
 
 <!-- Level Select -->
