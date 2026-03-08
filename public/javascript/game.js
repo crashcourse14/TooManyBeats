@@ -2342,10 +2342,10 @@ async function mmOnMatched(data) {
     for (let i = 3; i >= 0; i--) {
         if (i === 0) {
             mmPlayBeep(1200, 0.25, 0.5); // higher final beep
-            mmLog('Joining!', 'ok');
+            mmLog('Joining!', 'join');
         } else {
             mmPlayBeep(660, 0.12, 0.35);
-            mmLog(`Joining in ${i}...`, 'info');
+            mmLog(`Joining in ${i}...`, 'join');
         }
         await new Promise(r => setTimeout(r, 1000));
     }
