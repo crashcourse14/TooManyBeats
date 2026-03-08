@@ -2558,13 +2558,16 @@ function mmReturnToMenu() {
 //  VOICE CHAT (WebRTC push-to-talk)
 // ──────────────────────────────────────────────────────────
 
-let vcPeer         = null;
-let vcLocalStream  = null;
-let vcAudioEl      = null;
-let vcMicActive    = false;
-let vcConnected    = false;
-let vcSignalTimer  = null;
-let vcIsOfferer    = false;
+let vcPeer            = null;
+let vcLocalStream     = null;
+let vcAudioEl         = null;
+let vcMicActive       = false;
+let vcConnected       = false;
+let vcSignalTimer     = null;
+let vcIsOfferer       = false;
+let vcRemoteReady     = false;
+let vcIceQueue        = [];
+let vcMatchId         = null;
 
 const VC_ICE_SERVERS = [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -2572,7 +2575,12 @@ const VC_ICE_SERVERS = [
 ];
 
 async function vcInit(matchId, myName, oppName, isOfferer) {
-    vcIsOfferer = isOfferer;
+    vcIsOfferer   = isOfferer;
+    vcMatchId     = matchId;
+    vcRemoteReady = false;
+    vcIceQueue    = [];
+
+    console.log('[VC] init — offerer:', isOfferer, 'match:', matchId);
 
     document.getElementById('mm-voice-you-name').textContent = myName.toUpperCase();
     document.getElementById('mm-voice-opp-name').textContent = oppName.toUpperCase();
@@ -2586,57 +2594,87 @@ async function vcInit(matchId, myName, oppName, isOfferer) {
     try {
         vcLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
         vcLocalStream.getAudioTracks().forEach(t => { t.enabled = false; });
+        console.log('[VC] mic acquired');
     } catch (e) {
         console.warn('[VC] mic access denied:', e);
         return;
     }
 
+    // Create and unlock audio element before track arrives
+    vcAudioEl = document.createElement('audio');
+    vcAudioEl.autoplay = true;
+    vcAudioEl.volume   = 1.0;
+    document.body.appendChild(vcAudioEl);
+    const unlockSrc = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+    vcAudioEl.src = unlockSrc;
+    vcAudioEl.play().catch(() => {});
+    vcAudioEl.src = '';
+    vcAudioEl.srcObject = null;
+
     vcPeer = new RTCPeerConnection({ iceServers: VC_ICE_SERVERS });
     vcLocalStream.getTracks().forEach(t => vcPeer.addTrack(t, vcLocalStream));
 
     vcPeer.ontrack = (e) => {
-        if (!vcAudioEl) {
-            vcAudioEl = document.createElement('audio');
-            vcAudioEl.autoplay = true;
-            document.body.appendChild(vcAudioEl);
-        }
-        vcAudioEl.srcObject = e.streams[0];
+        console.log('[VC] ontrack fired, streams:', e.streams.length);
+        const stream = e.streams && e.streams[0];
+        if (!stream) return;
+        vcAudioEl.srcObject = stream;
+        vcAudioEl.play().catch(err => {
+            console.warn('[VC] audio play blocked, waiting for interaction:', err);
+            const retry = () => { vcAudioEl.play().catch(() => {}); };
+            window.addEventListener('keydown', retry, { once: true });
+            window.addEventListener('click',   retry, { once: true });
+        });
     };
 
     vcPeer.onicecandidate = (e) => {
-        if (e.candidate) {
-            fetch('/api/signal', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'ice', matchId, candidate: e.candidate }),
-            }).catch(() => {});
-        }
+        if (!e.candidate) { console.log('[VC] ICE gathering complete'); return; }
+        console.log('[VC] sending ICE candidate');
+        fetch('/api/signal', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'ice', matchId, candidate: e.candidate.toJSON() }),
+        }).catch(() => {});
     };
 
-    vcPeer.onconnectionstatechange = () => {
+    vcPeer.oniceconnectionstatechange = () => console.log('[VC] ICE state:', vcPeer.iceConnectionState);
+    vcPeer.onconnectionstatechange    = () => {
         vcConnected = vcPeer.connectionState === 'connected';
         console.log('[VC] connection state:', vcPeer.connectionState);
     };
 
     if (isOfferer) {
-        const offer = await vcPeer.createOffer();
-        await vcPeer.setLocalDescription(offer);
-        await fetch('/api/signal', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'offer', matchId, sdp: offer }),
-        });
+        try {
+            const offer = await vcPeer.createOffer({ offerToReceiveAudio: true });
+            await vcPeer.setLocalDescription(offer);
+            console.log('[VC] offer sent');
+            await fetch('/api/signal', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'offer', matchId, sdp: vcPeer.localDescription }),
+            });
+        } catch (e) { console.error('[VC] offer failed:', e); }
     }
 
-    vcSignalTimer = setInterval(() => vcPollSignals(matchId), 1500);
+    vcSignalTimer = setInterval(vcPollSignals, 1000);
 }
 
-async function vcPollSignals(matchId) {
+async function vcApplyQueuedIce() {
+    while (vcIceQueue.length > 0) {
+        const c = vcIceQueue.shift();
+        try { await vcPeer.addIceCandidate(new RTCIceCandidate(c)); console.log('[VC] applied queued ICE'); }
+        catch (e) { console.warn('[VC] queued ICE failed:', e); }
+    }
+}
+
+async function vcPollSignals() {
+    if (!vcMatchId || !vcPeer) return;
     try {
-        const res     = await fetch(`/api/signal?matchId=${matchId}`);
+        const res     = await fetch('/api/signal?matchId=' + vcMatchId);
         const data    = await res.json();
         const signals = data.signals || [];
 
         for (const sig of signals) {
-            const parsed = JSON.parse(sig.payload);
+            let parsed;
+            try { parsed = JSON.parse(sig.payload); } catch { continue; }
 
             // Talking indicator piggyback
             if (sig.type === 'ice' && parsed._talking !== undefined) {
@@ -2645,33 +2683,81 @@ async function vcPollSignals(matchId) {
             }
 
             if (sig.type === 'offer' && !vcIsOfferer) {
-                await vcPeer.setRemoteDescription(new RTCSessionDescription(parsed));
-                const answer = await vcPeer.createAnswer();
-                await vcPeer.setLocalDescription(answer);
-                await fetch('/api/signal', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'answer', matchId, sdp: answer }),
-                });
+                console.log('[VC] received offer, creating answer');
+                try {
+                    await vcPeer.setRemoteDescription(new RTCSessionDescription(parsed));
+                    vcRemoteReady = true;
+                    await vcApplyQueuedIce();
+                    const answer = await vcPeer.createAnswer();
+                    await vcPeer.setLocalDescription(answer);
+                    console.log('[VC] answer sent');
+                    await fetch('/api/signal', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'answer', matchId: vcMatchId, sdp: vcPeer.localDescription }),
+                    });
+                } catch (e) { console.error('[VC] answer failed:', e); }
+
             } else if (sig.type === 'answer' && vcIsOfferer) {
-                await vcPeer.setRemoteDescription(new RTCSessionDescription(parsed));
-            } else if (sig.type === 'ice' && parsed.candidate !== undefined) {
-                try { await vcPeer.addIceCandidate(new RTCIceCandidate(parsed)); }
-                catch (e) { /* stale */ }
+                console.log('[VC] received answer');
+                try {
+                    await vcPeer.setRemoteDescription(new RTCSessionDescription(parsed));
+                    vcRemoteReady = true;
+                    await vcApplyQueuedIce();
+                } catch (e) { console.error('[VC] setRemoteDesc (answer) failed:', e); }
+
+            } else if (sig.type === 'ice') {
+                if (vcRemoteReady) {
+                    try { await vcPeer.addIceCandidate(new RTCIceCandidate(parsed)); console.log('[VC] ICE applied'); }
+                    catch (e) { console.warn('[VC] ICE apply failed:', e); }
+                } else {
+                    console.log('[VC] queuing ICE (remote not ready)');
+                    vcIceQueue.push(parsed);
+                }
             }
         }
-    } catch (e) { console.warn('[VC] signal poll error:', e); }
+    } catch (e) { console.warn('[VC] poll error:', e); }
+}
+
+// ── Audio ducking ──────────────────────────────────────────
+const VC_DUCK_VOLUME   = 0.12;  // volume while someone is speaking
+const VC_NORMAL_VOLUME = 0.55;  // normal game music volume
+let   vcDuckTimer      = null;
+let   vcYouTalking     = false;
+let   vcOppTalking     = false;
+
+function vcUpdateDucking() {
+    const anyoneTalking = vcYouTalking || vcOppTalking;
+    const target = anyoneTalking ? VC_DUCK_VOLUME : VC_NORMAL_VOLUME;
+
+    clearInterval(vcDuckTimer);
+    if (!audio) return;
+
+    // Smooth fade over ~300ms in 30 steps
+    const start     = audio.volume;
+    const diff      = target - start;
+    const steps     = 30;
+    let   step      = 0;
+    vcDuckTimer = setInterval(() => {
+        step++;
+        if (!audio) { clearInterval(vcDuckTimer); return; }
+        audio.volume = Math.min(1, Math.max(0, start + diff * (step / steps)));
+        if (step >= steps) clearInterval(vcDuckTimer);
+    }, 10);
 }
 
 function vcSetTalking(who, talking) {
     const pill = document.getElementById(who === 'you' ? 'mm-voice-you' : 'mm-voice-opp');
-    const icon = document.getElementById(who === 'you' ? 'mm-voice-you-icon' : null);
     if (!pill) return;
     pill.classList.toggle('talking', talking);
     if (who === 'you') {
+        vcYouTalking = talking;
         pill.classList.toggle('muted', !talking);
         const i = document.getElementById('mm-voice-you-icon');
         if (i) i.textContent = talking ? '🔊' : '🎙';
+    } else {
+        vcOppTalking = talking;
     }
+    vcUpdateDucking();
 }
 
 function vcPushToTalkOn() {
@@ -2679,12 +2765,10 @@ function vcPushToTalkOn() {
     vcMicActive = true;
     vcLocalStream.getAudioTracks().forEach(t => { t.enabled = true; });
     vcSetTalking('you', true);
-    if (mmMatchId) {
-        fetch('/api/signal', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'ice', matchId: mmMatchId, candidate: { _talking: true } }),
-        }).catch(() => {});
-    }
+    if (vcMatchId) fetch('/api/signal', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'ice', matchId: vcMatchId, candidate: { _talking: true } }),
+    }).catch(() => {});
 }
 
 function vcPushToTalkOff() {
@@ -2692,17 +2776,23 @@ function vcPushToTalkOff() {
     vcMicActive = false;
     vcLocalStream.getAudioTracks().forEach(t => { t.enabled = false; });
     vcSetTalking('you', false);
-    if (mmMatchId) {
-        fetch('/api/signal', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'ice', matchId: mmMatchId, candidate: { _talking: false } }),
-        }).catch(() => {});
-    }
+    if (vcMatchId) fetch('/api/signal', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'ice', matchId: vcMatchId, candidate: { _talking: false } }),
+    }).catch(() => {});
 }
 
 function vcDestroy() {
     clearInterval(vcSignalTimer);
+    clearInterval(vcDuckTimer);
     vcSignalTimer = null;
+    vcDuckTimer   = null;
+    vcMatchId     = null;
+    vcRemoteReady = false;
+    vcIceQueue    = [];
+    vcYouTalking  = false;
+    vcOppTalking  = false;
+    if (audio) audio.volume = VC_NORMAL_VOLUME;
     if (vcLocalStream) { vcLocalStream.getTracks().forEach(t => t.stop()); vcLocalStream = null; }
     if (vcPeer)        { vcPeer.close(); vcPeer = null; }
     if (vcAudioEl)     { vcAudioEl.srcObject = null; vcAudioEl.remove(); vcAudioEl = null; }
@@ -2711,7 +2801,6 @@ function vcDestroy() {
     document.getElementById('mm-voice-bar').classList.remove('visible');
     document.getElementById('mm-voice-hint').classList.remove('visible');
 }
-
 // ──────────────────────────────────────────────────────────
 
 loadAllLevels();
