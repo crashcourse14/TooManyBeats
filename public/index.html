@@ -841,6 +841,42 @@
     color: #ff5080; text-shadow: 0 0 16px rgba(255,80,120,0.5);
   }
 
+  /* ── Voice chat talking indicators (top-left during match) ── */
+  #mm-voice-bar {
+    position: fixed; top: 70px; left: 20px;
+    display: none; flex-direction: column; gap: 8px;
+    z-index: 20; pointer-events: none;
+  }
+  #mm-voice-bar.visible { display: flex; }
+
+  .mm-voice-pill {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px; padding: 6px 12px;
+    font-family: 'Share Tech Mono', monospace; font-size: 10px;
+    letter-spacing: 1.5px; color: rgba(255,255,255,0.45);
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .mm-voice-pill.talking {
+    border-color: rgba(0,255,136,0.5);
+    color: #00ff88;
+  }
+  .mm-voice-pill.muted {
+    border-color: rgba(255,60,60,0.3);
+    color: rgba(255,100,100,0.5);
+  }
+  .mm-voice-icon { font-size: 12px; width: 14px; text-align: center; }
+  .mm-voice-name { letter-spacing: 2px; }
+
+  /* V key hint */
+  #mm-voice-hint {
+    position: fixed; bottom: 18px; left: 20px;
+    font-family: 'Share Tech Mono', monospace; font-size: 9px;
+    letter-spacing: 2px; color: rgba(255,255,255,0.2);
+    display: none; pointer-events: none; z-index: 20;
+  }
+  #mm-voice-hint.visible { display: block; }
+
   /* ── Results screen ── */
   #mm-results {
     gap: 0;
@@ -948,11 +984,11 @@
         <div class="news-card-icon">💻</div>
         <div class="news-card-meta">
           <span class="news-tag t-update">UPDATE</span>
-          <span class="news-card-date">Beta 1.030826</span>
+          <span class="news-card-date">Beta 1.030726</span>
         </div>
       </div>
-      <div class="news-card-headline">MATCH MAKING</div>
-      <div class="news-card-body">Match Making has been added! It is still in early development, and you may experience bugs/errors.</div>
+      <div class="news-card-headline">New Main Menu</div>
+      <div class="news-card-body">Added a new main menu.</div>
     </div>
 
 
@@ -1144,7 +1180,7 @@
   <div id="ls-launch-sub">single-click to select  ·  double-click or SPACE to launch  ·  ←→ to navigate</div>
   <button id="ls-mobile-launch" onclick="mobileLaunch()">▶ LAUNCH LEVEL</button>
   <div id="ls-best"></div>
-  <div id="ls-version">Beta 1.030826</div>
+  <div id="ls-version">Update (Beta) 1.0 - 3.6.26</div>
 </div>
 
 <!-- ══ MATCHMAKING SCREENS ══════════════════════════════════ -->
@@ -1203,6 +1239,21 @@
   <div id="mm-opp-name">—</div>
   <div id="mm-opp-score">0</div>
 </div>
+
+<!-- Voice chat talking indicators -->
+<div id="mm-voice-bar">
+  <div class="mm-voice-pill" id="mm-voice-you">
+    <span class="mm-voice-icon" id="mm-voice-you-icon">🎙</span>
+    <span class="mm-voice-name" id="mm-voice-you-name">—</span>
+  </div>
+  <div class="mm-voice-pill" id="mm-voice-opp">
+    <span class="mm-voice-icon">🎙</span>
+    <span class="mm-voice-name" id="mm-voice-opp-name">—</span>
+  </div>
+</div>
+
+<!-- V key hint -->
+<div id="mm-voice-hint">[V] HOLD TO TALK</div>
 
 <!-- 4. Results screen -->
 <div id="mm-results" class="mm-screen">

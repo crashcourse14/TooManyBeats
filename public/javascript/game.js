@@ -1994,6 +1994,11 @@ function activatePowerup(type) {
 // ──────────────────────────────────────────────────────────
 
 window.addEventListener('keydown', e => {
+    // V — push to talk (only during a match)
+    if (e.code === 'KeyV' && mmInMatch && !e.repeat) {
+        vcPushToTalkOn();
+        return;
+    }
     if (e.code === 'Escape') {
         e.preventDefault();
         if (state === 'playing' || state === 'dead' || state === 'levelcomplete') {
@@ -2117,6 +2122,12 @@ canvas.addEventListener('click', e => {
         return;
     }
     movePlayer(e.clientY > canvas.height / 2 ? 1 : -1);
+});
+
+window.addEventListener('keyup', e => {
+    if (e.code === 'KeyV' && mmInMatch) {
+        vcPushToTalkOff();
+    }
 });
 
 window.addEventListener('resize', () => {
@@ -2395,24 +2406,27 @@ function mmStartMatchGame() {
     mmMyFinalScore  = 0;
     mmOppFinalScore = 0;
 
-    // Activate the chosen level (loads audio but doesn't play yet)
     if (levels[mmLevelIndex]) {
         activateLevel(mmLevelIndex);
     }
 
-    // Show opponent HUD
     document.getElementById('mm-opp-name').textContent  = mmOpponent.toUpperCase();
     document.getElementById('mm-opp-score').textContent = '0';
     document.getElementById('mm-opponent-hud').classList.add('visible');
 
-    // Show HUD and powerup bar (normally shown by startGame via hideLevelSelect)
-    document.getElementById('ui').style.display = '';
+    document.getElementById('ui').style.display          = '';
     document.getElementById('powerup-bar').style.display = '';
 
-    // Start game — mmInMatch flag bypasses tab guard
-    startGame();
+    // Init voice chat — player1 is the offerer
+    const isOfferer = true; // will be overridden below based on match data
+    fetch(`/api/match?id=${mmMatchId}`).then(r => r.json()).then(match => {
+        const amP1 = match.player1.toLowerCase() === loggedInUser.toLowerCase();
+        vcInit(mmMatchId, loggedInUser, mmOpponent, amP1);
+    }).catch(() => {
+        vcInit(mmMatchId, loggedInUser, mmOpponent, true);
+    });
 
-    // Push score every 2s + poll opponent score
+    startGame();
     mmScoreTimer = setInterval(mmSyncMatch, 2000);
 }
 
@@ -2526,6 +2540,9 @@ function mmReturnToMenu() {
     mmScoreTimer  = null;
     mmOnlineTimer = null;
 
+    // Destroy voice chat
+    vcDestroy();
+
     // Hide all game HUD elements so they don't bleed through the main menu
     document.getElementById('ui').style.display          = 'none';
     document.getElementById('powerup-bar').style.display = 'none';
@@ -2535,6 +2552,164 @@ function mmReturnToMenu() {
     stopAudio();
 
     showMainMenu();
+}
+
+// ──────────────────────────────────────────────────────────
+//  VOICE CHAT (WebRTC push-to-talk)
+// ──────────────────────────────────────────────────────────
+
+let vcPeer         = null;
+let vcLocalStream  = null;
+let vcAudioEl      = null;
+let vcMicActive    = false;
+let vcConnected    = false;
+let vcSignalTimer  = null;
+let vcIsOfferer    = false;
+
+const VC_ICE_SERVERS = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+];
+
+async function vcInit(matchId, myName, oppName, isOfferer) {
+    vcIsOfferer = isOfferer;
+
+    document.getElementById('mm-voice-you-name').textContent = myName.toUpperCase();
+    document.getElementById('mm-voice-opp-name').textContent = oppName.toUpperCase();
+    document.getElementById('mm-voice-bar').classList.add('visible');
+    document.getElementById('mm-voice-hint').classList.add('visible');
+
+    vcSetTalking('you', false);
+    vcSetTalking('opp', false);
+    document.getElementById('mm-voice-you').classList.add('muted');
+
+    try {
+        vcLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        vcLocalStream.getAudioTracks().forEach(t => { t.enabled = false; });
+    } catch (e) {
+        console.warn('[VC] mic access denied:', e);
+        return;
+    }
+
+    vcPeer = new RTCPeerConnection({ iceServers: VC_ICE_SERVERS });
+    vcLocalStream.getTracks().forEach(t => vcPeer.addTrack(t, vcLocalStream));
+
+    vcPeer.ontrack = (e) => {
+        if (!vcAudioEl) {
+            vcAudioEl = document.createElement('audio');
+            vcAudioEl.autoplay = true;
+            document.body.appendChild(vcAudioEl);
+        }
+        vcAudioEl.srcObject = e.streams[0];
+    };
+
+    vcPeer.onicecandidate = (e) => {
+        if (e.candidate) {
+            fetch('/api/signal', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'ice', matchId, candidate: e.candidate }),
+            }).catch(() => {});
+        }
+    };
+
+    vcPeer.onconnectionstatechange = () => {
+        vcConnected = vcPeer.connectionState === 'connected';
+        console.log('[VC] connection state:', vcPeer.connectionState);
+    };
+
+    if (isOfferer) {
+        const offer = await vcPeer.createOffer();
+        await vcPeer.setLocalDescription(offer);
+        await fetch('/api/signal', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'offer', matchId, sdp: offer }),
+        });
+    }
+
+    vcSignalTimer = setInterval(() => vcPollSignals(matchId), 1500);
+}
+
+async function vcPollSignals(matchId) {
+    try {
+        const res     = await fetch(`/api/signal?matchId=${matchId}`);
+        const data    = await res.json();
+        const signals = data.signals || [];
+
+        for (const sig of signals) {
+            const parsed = JSON.parse(sig.payload);
+
+            // Talking indicator piggyback
+            if (sig.type === 'ice' && parsed._talking !== undefined) {
+                vcSetTalking('opp', !!parsed._talking);
+                continue;
+            }
+
+            if (sig.type === 'offer' && !vcIsOfferer) {
+                await vcPeer.setRemoteDescription(new RTCSessionDescription(parsed));
+                const answer = await vcPeer.createAnswer();
+                await vcPeer.setLocalDescription(answer);
+                await fetch('/api/signal', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'answer', matchId, sdp: answer }),
+                });
+            } else if (sig.type === 'answer' && vcIsOfferer) {
+                await vcPeer.setRemoteDescription(new RTCSessionDescription(parsed));
+            } else if (sig.type === 'ice' && parsed.candidate !== undefined) {
+                try { await vcPeer.addIceCandidate(new RTCIceCandidate(parsed)); }
+                catch (e) { /* stale */ }
+            }
+        }
+    } catch (e) { console.warn('[VC] signal poll error:', e); }
+}
+
+function vcSetTalking(who, talking) {
+    const pill = document.getElementById(who === 'you' ? 'mm-voice-you' : 'mm-voice-opp');
+    const icon = document.getElementById(who === 'you' ? 'mm-voice-you-icon' : null);
+    if (!pill) return;
+    pill.classList.toggle('talking', talking);
+    if (who === 'you') {
+        pill.classList.toggle('muted', !talking);
+        const i = document.getElementById('mm-voice-you-icon');
+        if (i) i.textContent = talking ? '🔊' : '🎙';
+    }
+}
+
+function vcPushToTalkOn() {
+    if (!vcLocalStream) return;
+    vcMicActive = true;
+    vcLocalStream.getAudioTracks().forEach(t => { t.enabled = true; });
+    vcSetTalking('you', true);
+    if (mmMatchId) {
+        fetch('/api/signal', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'ice', matchId: mmMatchId, candidate: { _talking: true } }),
+        }).catch(() => {});
+    }
+}
+
+function vcPushToTalkOff() {
+    if (!vcLocalStream) return;
+    vcMicActive = false;
+    vcLocalStream.getAudioTracks().forEach(t => { t.enabled = false; });
+    vcSetTalking('you', false);
+    if (mmMatchId) {
+        fetch('/api/signal', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'ice', matchId: mmMatchId, candidate: { _talking: false } }),
+        }).catch(() => {});
+    }
+}
+
+function vcDestroy() {
+    clearInterval(vcSignalTimer);
+    vcSignalTimer = null;
+    if (vcLocalStream) { vcLocalStream.getTracks().forEach(t => t.stop()); vcLocalStream = null; }
+    if (vcPeer)        { vcPeer.close(); vcPeer = null; }
+    if (vcAudioEl)     { vcAudioEl.srcObject = null; vcAudioEl.remove(); vcAudioEl = null; }
+    vcConnected = false;
+    vcMicActive = false;
+    document.getElementById('mm-voice-bar').classList.remove('visible');
+    document.getElementById('mm-voice-hint').classList.remove('visible');
 }
 
 // ──────────────────────────────────────────────────────────
