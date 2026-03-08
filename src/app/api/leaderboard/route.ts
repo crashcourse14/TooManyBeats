@@ -14,7 +14,6 @@ import {
   readUsers,
   LeaderboardEntry,
 } from '@/lib/db';
-import gameConfig from '../../../../data/game.config';
 
 // ── GET /api/leaderboard ───────────────────────────────────────
 export async function GET() {
@@ -36,11 +35,6 @@ export async function GET() {
 
 // ── POST /api/leaderboard ──────────────────────────────────────
 export async function POST(req: NextRequest) {
-  // Check config flag before doing anything
-  if (!gameConfig.UpdateLeaderboard) {
-    return NextResponse.json({ ok: false, message: 'Leaderboard updates are currently disabled.' });
-  }
-
   const session = await getSession();
   if (!session.user) {
     return NextResponse.json({ error: 'You must be logged in to submit a score.' }, { status: 401 });
@@ -55,7 +49,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Score must be a positive integer.' }, { status: 400 });
   }
 
-  const username        = session.user;
+  const username       = session.user;
   const existingEntries = await readLeaderboard();
 
   const existing = existingEntries.find(
@@ -76,4 +70,4 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ ok: true, newTotal });
-}
+}                         
