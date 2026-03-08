@@ -649,6 +649,215 @@
     transition: color 0.15s, border-color 0.15s;
   }
   #profile-logout-btn:hover { color: #ff6666; border-color: rgba(255,80,80,0.5); }
+
+  /* ══ MATCHMAKING SCREENS ══ */
+
+  /* Shared base for all MM screens */
+  .mm-screen {
+    position: fixed; inset: 0; display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    z-index: 50;
+  }
+  .mm-screen.visible { display: flex; }
+
+  /* Only pregame and results need a dark backdrop */
+  #mm-pregame, #mm-results {
+    background: rgba(0,0,0,0.93);
+  }
+
+  /* ── Searching screen ── */
+  #mm-searching {
+    gap: 28px;
+  }
+  @keyframes mm-spin {
+    0%   { transform: rotate(0deg) scale(1);    }
+    50%  { transform: rotate(180deg) scale(1.1); }
+    100% { transform: rotate(360deg) scale(1);  }
+  }
+  #mm-search-title {
+    font-family: 'Orbitron', monospace; font-size: clamp(18px,3vw,32px);
+    font-weight: 900; letter-spacing: 4px; color: white;
+    text-shadow: 0 0 24px rgba(0,255,255,0.5);
+  }
+  #mm-search-sub {
+    font-family: 'Share Tech Mono', monospace; font-size: 11px;
+    letter-spacing: 3px; color: rgba(255,255,255,0.35);
+  }
+  #mm-search-dots span {
+    animation: mm-dot 1.4s infinite;
+    font-family: 'Share Tech Mono', monospace; font-size: 20px; color: #00ffff;
+  }
+  #mm-search-dots span:nth-child(2) { animation-delay: 0.2s; }
+  #mm-search-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes mm-dot { 0%,80%,100%{opacity:0} 40%{opacity:1} }
+
+  #mm-cancel-btn {
+    font-family: 'Share Tech Mono', monospace; font-size: 11px;
+    letter-spacing: 2px; color: rgba(255,80,80,0.6);
+    background: none; border: 1px solid rgba(255,80,80,0.2);
+    border-radius: 6px; padding: 10px 28px; cursor: pointer;
+    transition: all 0.15s; margin-top: 12px;
+  }
+  #mm-cancel-btn:hover { color: #ff6666; border-color: rgba(255,80,80,0.5); }
+
+  /* Search log */
+  #mm-search-log {
+    width: min(480px, 88vw);
+    max-height: 140px; overflow-y: auto;
+    background: rgba(0,0,0,0.55);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px; padding: 12px 16px;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  #mm-search-log::-webkit-scrollbar { width: 3px; }
+  #mm-search-log::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+  .mm-log-line {
+    font-family: 'Share Tech Mono', monospace; font-size: 10px;
+    letter-spacing: 1px; color: rgba(255,255,255,0.4);
+    line-height: 1.5;
+  }
+  .mm-log-line.info  { color: rgba(0,255,255,0.7); }
+  .mm-log-line.ok    { color: rgba(68,255,136,0.8); }
+  .mm-log-line.warn  { color: rgba(255,170,50,0.8); }
+  .mm-log-line.error { color: rgba(255,60,80,0.8); }
+
+  /* ── Pre-game / player card screen ── */
+  #mm-pregame {
+    gap: 0;
+  }
+  #mm-pregame-title {
+    font-family: 'Orbitron', monospace; font-size: clamp(13px,1.8vw,20px);
+    font-weight: 700; letter-spacing: 5px; color: rgba(255,255,255,0.4);
+    margin-bottom: 28px; text-transform: uppercase;
+  }
+  #mm-pregame-cards {
+    display: flex; align-items: center; gap: clamp(16px,4vw,60px);
+    margin-bottom: 32px;
+  }
+  .mm-player-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px; padding: 28px 32px;
+    width: clamp(160px,22vw,240px);
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    position: relative;
+  }
+  .mm-player-card.you  { border-color: rgba(0,255,255,0.3); box-shadow: 0 0 30px rgba(0,255,255,0.08); }
+  .mm-player-card.opp  { border-color: rgba(255,80,120,0.3); box-shadow: 0 0 30px rgba(255,80,120,0.08); }
+  .mm-card-label {
+    position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 3px;
+    padding: 3px 14px; border-radius: 20px; white-space: nowrap;
+  }
+  .mm-player-card.you .mm-card-label  { background: rgba(0,255,255,0.15); color: #00ffff; border: 1px solid rgba(0,255,255,0.3); }
+  .mm-player-card.opp .mm-card-label  { background: rgba(255,80,120,0.12); color: #ff5080; border: 1px solid rgba(255,80,120,0.3); }
+  .mm-card-avatar { font-size: 36px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2)); }
+  .mm-card-username {
+    font-family: 'Orbitron', monospace; font-size: clamp(11px,1.4vw,15px);
+    font-weight: 900; letter-spacing: 2px; color: white; text-align: center;
+  }
+  .mm-card-title {
+    font-family: 'Share Tech Mono', monospace; font-size: 9px;
+    letter-spacing: 1.5px; padding: 3px 10px; border-radius: 4px;
+    border: 1px solid; text-align: center;
+  }
+  .mm-card-stat {
+    font-family: 'Share Tech Mono', monospace; font-size: 10px;
+    letter-spacing: 1px; color: rgba(255,255,255,0.4); text-align: center;
+    line-height: 1.8;
+  }
+  .mm-card-stat strong { color: white; }
+
+  .mm-vs {
+    font-family: 'Orbitron', monospace; font-size: clamp(22px,4vw,42px);
+    font-weight: 900; color: white; letter-spacing: 4px;
+    text-shadow: 0 0 30px rgba(255,255,255,0.3);
+  }
+
+  #mm-level-name {
+    font-family: 'Share Tech Mono', monospace; font-size: 11px;
+    letter-spacing: 3px; color: rgba(255,255,255,0.3); margin-bottom: 8px;
+  }
+  #mm-countdown {
+    font-family: 'Orbitron', monospace; font-size: clamp(48px,10vw,100px);
+    font-weight: 900; color: #00ffff;
+    text-shadow: 0 0 40px rgba(0,255,255,0.6), 0 0 80px rgba(0,255,255,0.3);
+    animation: mm-pulse 1s ease-in-out infinite;
+    min-height: 120px; display: flex; align-items: center;
+  }
+  @keyframes mm-pulse {
+    0%,100% { transform: scale(1);    opacity: 1;   }
+    50%      { transform: scale(1.08); opacity: 0.8; }
+  }
+
+  /* ── In-match opponent HUD ── */
+  #mm-opponent-hud {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+    display: none; flex-direction: column; align-items: center; gap: 2px;
+    z-index: 15; pointer-events: none;
+    background: rgba(0,0,0,0.55); border: 1px solid rgba(255,80,120,0.25);
+    border-radius: 10px; padding: 8px 20px;
+  }
+  #mm-opponent-hud.visible { display: flex; }
+  #mm-opp-label {
+    font-family: 'Share Tech Mono', monospace; font-size: 9px;
+    letter-spacing: 3px; color: rgba(255,80,120,0.7);
+  }
+  #mm-opp-name {
+    font-family: 'Orbitron', monospace; font-size: 13px; font-weight: 700;
+    letter-spacing: 2px; color: white;
+  }
+  #mm-opp-score {
+    font-family: 'Orbitron', monospace; font-size: 22px; font-weight: 900;
+    color: #ff5080; text-shadow: 0 0 16px rgba(255,80,120,0.5);
+  }
+
+  /* ── Results screen ── */
+  #mm-results {
+    gap: 0;
+  }
+  #mm-result-banner {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(28px,5vw,56px); font-weight: 900;
+    letter-spacing: 5px; margin-bottom: 32px;
+  }
+  #mm-result-banner.win  { color: #00ffcc; text-shadow: 0 0 40px rgba(0,255,180,0.6); }
+  #mm-result-banner.lose { color: #ff4466; text-shadow: 0 0 40px rgba(255,40,80,0.6); }
+  #mm-result-banner.draw { color: #ffcc00; text-shadow: 0 0 40px rgba(255,200,0,0.5); }
+
+  #mm-result-cards {
+    display: flex; align-items: flex-start; gap: clamp(16px,4vw,60px);
+    margin-bottom: 36px;
+  }
+  .mm-result-card {
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px; padding: 24px 28px;
+    width: clamp(150px,21vw,230px);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    position: relative;
+  }
+  .mm-result-card.you  { border-color: rgba(0,255,180,0.3); }
+  .mm-result-card.opp  { border-color: rgba(255,80,120,0.3); }
+  .mm-result-card .mm-card-label { font-size: 8px; }
+  .mm-result-score {
+    font-family: 'Orbitron', monospace; font-size: clamp(20px,3vw,32px);
+    font-weight: 900; color: white; letter-spacing: 2px;
+  }
+  .mm-result-stat {
+    font-family: 'Share Tech Mono', monospace; font-size: 9px;
+    letter-spacing: 1px; color: rgba(255,255,255,0.35); text-align: center;
+    line-height: 1.9;
+  }
+  .mm-result-stat strong { color: rgba(255,255,255,0.75); }
+
+  #mm-result-back {
+    font-family: 'Orbitron', monospace; font-size: 12px; font-weight: 700;
+    letter-spacing: 3px; color: #000; background: #00ffff;
+    border: none; border-radius: 8px; padding: 13px 40px;
+    cursor: pointer; transition: all 0.15s;
+    box-shadow: 0 0 24px rgba(0,255,255,0.3);
+  }
+  #mm-result-back:hover { background: #66ffff; transform: translateY(-2px); }
 </style>
 </head>
 <body>
@@ -778,7 +987,7 @@
   </div>
 
   <div id="menu-buttons">
-    <button class="menu-btn" disabled>⚔️ &nbsp;Match Make</button>
+    <button class="menu-btn" onclick="startMatchmaking()">⚔️ &nbsp;MATCH MAKE</button>
     <button class="menu-btn" onclick="goToScreen('levels')">▤ &nbsp;LEVELS</button>
     <button class="menu-btn" onclick="goToScreen('leaderboard')">🏆 &nbsp;LEADERBOARD</button>
     <button class="menu-btn" onclick="goToScreen('links')">🔗 &nbsp;LINKS</button>
@@ -907,6 +1116,73 @@
   <button id="ls-mobile-launch" onclick="mobileLaunch()">▶ LAUNCH LEVEL</button>
   <div id="ls-best"></div>
   <div id="ls-version">Update (Beta) 1.0 - 3.6.26</div>
+</div>
+
+<!-- ══ MATCHMAKING SCREENS ══════════════════════════════════ -->
+
+<!-- 1. Searching -->
+<div id="mm-searching" class="mm-screen">
+  <div id="mm-search-title">SEARCHING FOR MATCH</div>
+  <div id="mm-search-dots"><span>.</span><span>.</span><span>.</span></div>
+  <div id="mm-search-log"></div>
+  <button id="mm-cancel-btn" onclick="cancelMatchmaking()">CANCEL</button>
+</div>
+
+<!-- 2. Pre-game player cards + countdown -->
+<div id="mm-pregame" class="mm-screen">
+  <div id="mm-pregame-title">MATCH FOUND</div>
+  <div id="mm-pregame-cards">
+    <!-- You -->
+    <div class="mm-player-card you" id="mm-card-you">
+      <div class="mm-card-label">YOU</div>
+      <div class="mm-card-avatar">👾</div>
+      <div class="mm-card-username" id="mm-you-name">—</div>
+      <div class="mm-card-title"   id="mm-you-title" style="display:none"></div>
+      <div class="mm-card-stat"    id="mm-you-stats"></div>
+    </div>
+
+    <div class="mm-vs">VS</div>
+
+    <!-- Opponent -->
+    <div class="mm-player-card opp" id="mm-card-opp">
+      <div class="mm-card-label">OPPONENT</div>
+      <div class="mm-card-avatar">👾</div>
+      <div class="mm-card-username" id="mm-opp-name-pre">—</div>
+      <div class="mm-card-title"    id="mm-opp-title" style="display:none"></div>
+      <div class="mm-card-stat"     id="mm-opp-stats"></div>
+    </div>
+  </div>
+
+  <div id="mm-level-name">LEVEL: —</div>
+  <div id="mm-countdown">3</div>
+</div>
+
+<!-- 3. In-match opponent score overlay (shown during gameplay) -->
+<div id="mm-opponent-hud">
+  <div id="mm-opp-label">OPPONENT</div>
+  <div id="mm-opp-name">—</div>
+  <div id="mm-opp-score">0</div>
+</div>
+
+<!-- 4. Results screen -->
+<div id="mm-results" class="mm-screen">
+  <div id="mm-result-banner">—</div>
+  <div id="mm-result-cards">
+    <div class="mm-result-card you">
+      <div class="mm-card-label">YOU</div>
+      <div class="mm-card-username" id="mm-res-you-name">—</div>
+      <div class="mm-result-score"  id="mm-res-you-score">0</div>
+      <div class="mm-result-stat"   id="mm-res-you-stat"></div>
+    </div>
+    <div class="mm-vs" style="margin-top:40px">VS</div>
+    <div class="mm-result-card opp">
+      <div class="mm-card-label">OPPONENT</div>
+      <div class="mm-card-username" id="mm-res-opp-name">—</div>
+      <div class="mm-result-score"  id="mm-res-opp-score">0</div>
+      <div class="mm-result-stat"   id="mm-res-opp-stat"></div>
+    </div>
+  </div>
+  <button id="mm-result-back" onclick="mmReturnToMenu()">BACK TO MENU</button>
 </div>
 
 <script src="/javascript/logger.js"></script>

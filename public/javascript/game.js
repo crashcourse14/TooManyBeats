@@ -1883,8 +1883,13 @@ function die() {
     spawnParticles(PLAYER_X + PLAYER_W / 2, playerY, 60, ['#ff0044', '#ff6600', '#ffff00', '#ff00aa', 'white'], 10);
     stopAudio();
 
-    // submit the run to the leaderboard (will no-op if not logged in)
-    submitScore(fs, peakCombo).catch(e => console.warn('Score submit failed:', e.message));
+    if (mmInMatch) {
+        // In a match — report death, show results instead of normal leaderboard submit
+        mmOnDie(fs).catch(e => console.warn('MM die error:', e));
+    } else {
+        // Normal game — submit to leaderboard
+        submitScore(fs, peakCombo).catch(e => console.warn('Score submit failed:', e.message));
+    }
 }
 
 function completeLevel() {
@@ -2118,7 +2123,331 @@ window.addEventListener('resize', () => {
 });
 
 // ──────────────────────────────────────────────────────────
-//  BOOT
+//  MATCHMAKING SYSTEM
+// ──────────────────────────────────────────────────────────
+
+let mmMatchId        = null;  // current active match id
+let mmOpponent       = null;  // opponent username
+let mmLevelIndex     = null;  // level index chosen for match
+let mmPollTimer      = null;  // interval for polling
+let mmScoreTimer     = null;  // interval for pushing score to server
+let mmInMatch        = false; // true while a match game is running
+let mmMyFinalScore   = 0;
+let mmOppFinalScore  = 0;
+
+// ── Show / hide helpers ────────────────────────────────────
+function mmShowScreen(id) {
+    ['mm-searching', 'mm-pregame', 'mm-results'].forEach(s => {
+        document.getElementById(s).classList.toggle('visible', s === id);
+    });
+}
+function mmHideAll() {
+    ['mm-searching', 'mm-pregame', 'mm-results'].forEach(s =>
+        document.getElementById(s).classList.remove('visible')
+    );
+    document.getElementById('mm-opponent-hud').classList.remove('visible');
+}
+
+// ── Log helper — writes a line to the on-screen search log ─
+function mmLog(msg, type = '') {
+    console.log('[MM]', msg);
+    const log = document.getElementById('mm-search-log');
+    if (!log) return;
+    const line = document.createElement('div');
+    line.className = `mm-log-line ${type}`;
+    const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    line.textContent = `[${time}] ${msg}`;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+}
+
+// ── Entry point — called from menu button ──────────────────
+async function startMatchmaking() {
+    if (!loggedInUser) {
+        showToast('⚠ YOU MUST BE LOGGED IN TO MATCH MAKE');
+        return;
+    }
+
+    hideMainMenu();
+    mmShowScreen('mm-searching');
+
+    // Clear previous log
+    const log = document.getElementById('mm-search-log');
+    if (log) log.innerHTML = '';
+
+    mmLog('Searching for a match. This could take a while due to low player count...', 'warn');
+    mmLog('Joining matchmaking queue...', 'info');
+
+    try {
+        const res  = await fetch('/api/matchmaking', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'join' }),
+        });
+        const data = await res.json();
+
+        if (data.status === 'matched') {
+            mmLog(`Opponent found: ${data.opponent}!`, 'ok');
+            await mmOnMatched(data);
+        } else if (data.error) {
+            mmLog(`Error: ${data.error}`, 'error');
+        } else {
+            mmLog('Added to queue. Waiting for opponent...', 'info');
+            mmPollTimer = setInterval(mmPoll, 1500);
+        }
+    } catch (e) {
+        mmLog('Connection error — check your network.', 'error');
+        showToast('⚠ MATCHMAKING ERROR — CHECK CONNECTION');
+        mmReturnToMenu();
+    }
+}
+
+async function mmPoll() {
+    try {
+        const res  = await fetch('/api/matchmaking', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'poll' }),
+        });
+        const data = await res.json();
+
+        if (data.status === 'matched') {
+            clearInterval(mmPollTimer);
+            mmPollTimer = null;
+            mmLog(`Opponent found: ${data.opponent}!`, 'ok');
+            await mmOnMatched(data);
+        } else if (data.status === 'expired') {
+            clearInterval(mmPollTimer);
+            mmPollTimer = null;
+            mmLog('Queue expired. Try again.', 'warn');
+            showToast('QUEUE EXPIRED — TRY AGAIN');
+            mmReturnToMenu();
+        } else {
+            mmLog('Still searching...', '');
+        }
+    } catch { /* keep polling */ }
+}
+
+async function cancelMatchmaking() {
+    clearInterval(mmPollTimer);
+    mmPollTimer = null;
+    mmLog('Cancelled matchmaking.', 'warn');
+    await fetch('/api/matchmaking', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cancel' }),
+    }).catch(() => {});
+    mmReturnToMenu();
+}
+
+// ── Match found — load pre-game screen ────────────────────
+async function mmOnMatched(data) {
+    mmMatchId    = data.matchId;
+    mmOpponent   = data.opponent;
+    mmLevelIndex = data.levelIndex;
+
+    mmShowScreen('mm-pregame');
+
+    // Load player info for both sides in parallel
+    const [myInfo, oppInfo] = await Promise.all([
+        mmFetchPlayerInfo(loggedInUser),
+        mmFetchPlayerInfo(mmOpponent),
+    ]);
+
+    // Populate YOU card
+    document.getElementById('mm-you-name').textContent = loggedInUser.toUpperCase();
+    mmPopulateCard('mm-you-title', 'mm-you-stats', myInfo);
+
+    // Populate OPPONENT card
+    document.getElementById('mm-opp-name-pre').textContent = mmOpponent.toUpperCase();
+    mmPopulateCard('mm-opp-title', 'mm-opp-stats', oppInfo);
+
+    // Show level name (resolve from loaded levels array)
+    const lvl = levels[mmLevelIndex];
+    const levelDisplayName = lvl ? lvl.name : `Level ${mmLevelIndex + 1}`;
+    document.getElementById('mm-level-name').textContent = `LEVEL: ${levelDisplayName}`;
+
+    // Countdown 3 → 2 → 1 → GO
+    await mmCountdown();
+
+    // Start the actual game
+    mmStartMatchGame();
+}
+
+async function mmFetchPlayerInfo(username) {
+    try {
+        const res  = await fetch('/api/match', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'playerInfo', matchId: mmMatchId, username }),
+        });
+        return await res.json();
+    } catch { return {}; }
+}
+
+function mmPopulateCard(titleElId, statsElId, info) {
+    const titleEl = document.getElementById(titleElId);
+    const statsEl = document.getElementById(statsElId);
+
+    if (info.titleLabel) {
+        titleEl.textContent  = info.titleLabel;
+        titleEl.className    = `mm-card-title ${info.titleClass || ''}`;
+        titleEl.style.display = '';
+    } else {
+        titleEl.style.display = 'none';
+    }
+
+    statsEl.innerHTML =
+        `<strong>#${info.rank ?? '—'}</strong> LEADERBOARD<br>` +
+        `BEST: <strong>${(info.bestScore ?? 0).toLocaleString()}</strong>`;
+}
+
+function mmCountdown() {
+    return new Promise(resolve => {
+        const el = document.getElementById('mm-countdown');
+        let count = 3;
+        el.textContent = count;
+
+        const tick = setInterval(() => {
+            count--;
+            if (count <= 0) {
+                clearInterval(tick);
+                el.textContent = 'GO!';
+                setTimeout(resolve, 600);
+            } else {
+                el.textContent = count;
+            }
+        }, 1000);
+    });
+}
+
+// ── Start the match game ───────────────────────────────────
+function mmStartMatchGame() {
+    mmHideAll();
+    mmInMatch = true;
+    mmMyFinalScore  = 0;
+    mmOppFinalScore = 0;
+
+    // Activate the chosen level
+    if (levels[mmLevelIndex]) {
+        activateLevel(mmLevelIndex);
+    }
+
+    // Show opponent HUD
+    document.getElementById('mm-opp-name').textContent  = mmOpponent.toUpperCase();
+    document.getElementById('mm-opp-score').textContent = '0';
+    document.getElementById('mm-opponent-hud').classList.add('visible');
+
+    // Start game
+    startGame();
+
+    // Push score every 2s + poll opponent score
+    mmScoreTimer = setInterval(mmSyncMatch, 2000);
+}
+
+async function mmSyncMatch() {
+    if (!mmMatchId || !mmInMatch) return;
+
+    // Push my current score
+    const myScore = Math.floor(score);
+    fetch('/api/match', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'score', matchId: mmMatchId, score: myScore }),
+    }).catch(() => {});
+
+    // Poll match state for opponent score
+    try {
+        const res   = await fetch(`/api/match?id=${mmMatchId}`);
+        const match = await res.json();
+        if (!match) return;
+
+        const isP1      = match.player1.toLowerCase() === loggedInUser.toLowerCase();
+        const oppScore  = isP1 ? match.p2_score : match.p1_score;
+        const oppDead   = isP1 ? match.p2_dead  : match.p1_dead;
+
+        document.getElementById('mm-opp-score').textContent = oppScore.toLocaleString();
+
+        if (oppDead && mmInMatch) {
+            // Opponent died — we win (but keep playing, result shown when we die too)
+            mmOppFinalScore = oppScore;
+        }
+    } catch { /* ignore */ }
+}
+
+// ── Called from die() when in a match ─────────────────────
+async function mmOnDie(myFinalScore) {
+    if (!mmInMatch) return;
+    mmInMatch      = false;
+    mmMyFinalScore = myFinalScore;
+
+    clearInterval(mmScoreTimer);
+    mmScoreTimer = null;
+
+    document.getElementById('mm-opponent-hud').classList.remove('visible');
+
+    // Report death to server
+    let winner = null;
+    try {
+        const res  = await fetch('/api/match', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'die', matchId: mmMatchId, score: myFinalScore }),
+        });
+        const data = await res.json();
+        winner = data.winner;
+    } catch { /* ignore */ }
+
+    // Fetch final match state for opponent's score
+    try {
+        const res   = await fetch(`/api/match?id=${mmMatchId}`);
+        const match = await res.json();
+        if (match) {
+            const isP1 = match.player1.toLowerCase() === loggedInUser.toLowerCase();
+            mmOppFinalScore = isP1 ? match.p2_score : match.p1_score;
+        }
+    } catch { /* ignore */ }
+
+    mmShowResults(winner);
+}
+
+// ── Results screen ─────────────────────────────────────────
+function mmShowResults(winner) {
+    const iWon = winner && winner.toLowerCase() === loggedInUser.toLowerCase();
+    const isDraw = !winner;
+
+    const banner = document.getElementById('mm-result-banner');
+    if (isDraw) {
+        banner.textContent = 'DRAW';
+        banner.className   = 'mm-result-banner draw';
+    } else if (iWon) {
+        banner.textContent = '🏆 YOU WIN!';
+        banner.className   = 'mm-result-banner win';
+    } else {
+        banner.textContent = '💀 YOU LOSE';
+        banner.className   = 'mm-result-banner lose';
+    }
+
+    document.getElementById('mm-res-you-name').textContent  = loggedInUser.toUpperCase();
+    document.getElementById('mm-res-you-score').textContent = mmMyFinalScore.toLocaleString();
+    document.getElementById('mm-res-you-stat').innerHTML    =
+        `SCORE: <strong>${mmMyFinalScore.toLocaleString()}</strong>`;
+
+    document.getElementById('mm-res-opp-name').textContent  = (mmOpponent || '?').toUpperCase();
+    document.getElementById('mm-res-opp-score').textContent = mmOppFinalScore.toLocaleString();
+    document.getElementById('mm-res-opp-stat').innerHTML    =
+        `SCORE: <strong>${mmOppFinalScore.toLocaleString()}</strong>`;
+
+    mmShowScreen('mm-results');
+}
+
+function mmReturnToMenu() {
+    mmHideAll();
+    mmInMatch    = false;
+    mmMatchId    = null;
+    mmOpponent   = null;
+    mmLevelIndex = null;
+    clearInterval(mmPollTimer);
+    clearInterval(mmScoreTimer);
+    mmPollTimer  = null;
+    mmScoreTimer = null;
+    showMainMenu();
+}
+
 // ──────────────────────────────────────────────────────────
 
 loadAllLevels();
