@@ -275,7 +275,7 @@ async function loadAllLevels() {
     for (let i = 0; i < LEVEL_FILES.length; i++) {
         const file = LEVEL_FILES[i];
         console.log(`Loading level file: ${file.toUpperCase()}`);
-        subEl.textContent = `LOADING ${file.toUpperCase()}`;
+        subEl.textContent = `LOADING LEVELS`;
         barEl.style.width = ((i / LEVEL_FILES.length) * 80) + '%';
         try {
             const res = await fetch(file);
@@ -297,7 +297,6 @@ async function loadAllLevels() {
         }
     }
 
-    subEl.textContent = `${levels.length} LEVEL(S) READY`;
     await new Promise(r => setTimeout(r, 600));
     loadingEl.classList.add('hidden');
     setTimeout(() => {
@@ -2057,7 +2056,7 @@ window.addEventListener('touchstart', e => {
 window.addEventListener('touchend', e => {
     // If the touch target is inside a UI panel or button, let it handle itself
     const target = e.target;
-    const isUI = target.closest('#top-nav, #level-select, #leaderboard-panel, #links-panel, #login-panel, #ls-launch, #news-screen, #content-warning, #loading-screen');
+    const isUI = target.closest('#top-nav, #level-select, #leaderboard-panel, #links-panel, #login-panel, #ls-launch, #news-screen, #content-warning, #loading-screen #main-menu'); 
     if (isUI) { touchStartY = touchStartX = touchStartTime = null; return; }
 
     if (state === 'title') { touchStartY = touchStartX = touchStartTime = null; return; }
