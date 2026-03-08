@@ -2456,6 +2456,9 @@ async function mmOnDie(myFinalScore) {
 
     document.getElementById('mm-opponent-hud').classList.remove('visible');
 
+    // Submit score to leaderboard just like a normal level death
+    submitScore(myFinalScore, peakCombo).catch(e => console.warn('MM score submit failed:', e.message));
+
     // Report death to server
     let winner = null;
     try {

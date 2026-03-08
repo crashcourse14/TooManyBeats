@@ -4,6 +4,9 @@ Too Many Beats is a rythim game where you have to advoid obsticales of all diffi
 ## Game Version
 Beta 1.030826
 
+## Latest Update
+MATCH MAKING WAS ADDED
+
 ## Leveling
 All levels can be programmed, and modified in /levels/. 
 Levels can have any type of name, just remeber to include it into the file system in game.js.
@@ -49,4 +52,3 @@ Custom titles will be added by DEVELOPERS. Contributors are NOT allowed to add t
 - Do NOT give your self a custom title, UNLESS TOLD SO.
 
 ## Future Plan
-- Match making (Going to have fun with this)
