@@ -669,6 +669,11 @@
   #mm-searching {
     gap: 28px;
   }
+  #mm-search-icon {
+    font-size: 52px;
+    animation: mm-spin 2s linear infinite;
+    filter: drop-shadow(0 0 18px rgba(0,255,255,0.5));
+  }
   @keyframes mm-spin {
     0%   { transform: rotate(0deg) scale(1);    }
     50%  { transform: rotate(180deg) scale(1.1); }
@@ -699,6 +704,30 @@
     transition: all 0.15s; margin-top: 12px;
   }
   #mm-cancel-btn:hover { color: #ff6666; border-color: rgba(255,80,80,0.5); }
+
+  /* Online counters */
+  #mm-online-bar {
+    display: flex; gap: 24px; align-items: center;
+    margin-bottom: 6px;
+  }
+  .mm-online-pill {
+    font-family: 'Share Tech Mono', monospace; font-size: 10px;
+    letter-spacing: 2px; padding: 5px 14px; border-radius: 20px;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .mm-online-pill.online {
+    background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.25); color: #00ff88;
+  }
+  .mm-online-pill.searching {
+    background: rgba(0,200,255,0.08); border: 1px solid rgba(0,200,255,0.25); color: #00ccff;
+  }
+  .mm-online-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    animation: mm-blink 1.6s ease-in-out infinite;
+  }
+  .online    .mm-online-dot { background: #00ff88; }
+  .searching .mm-online-dot { background: #00ccff; }
+  @keyframes mm-blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
   /* Search log */
   #mm-search-log {
@@ -1122,6 +1151,17 @@
 
 <!-- 1. Searching -->
 <div id="mm-searching" class="mm-screen">
+  <div id="mm-online-bar">
+    <div class="mm-online-pill online">
+      <div class="mm-online-dot"></div>
+      <span id="mm-online-count">—</span> ONLINE
+    </div>
+    <div class="mm-online-pill searching">
+      <div class="mm-online-dot"></div>
+      <span id="mm-mm-count">—</span> SEARCHING
+    </div>
+  </div>
+  <div id="mm-search-icon">⚔️</div>
   <div id="mm-search-title">SEARCHING FOR MATCH</div>
   <div id="mm-search-dots"><span>.</span><span>.</span><span>.</span></div>
   <div id="mm-search-log"></div>

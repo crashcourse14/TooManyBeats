@@ -1390,6 +1390,7 @@ async function checkExistingSession() {
         if (data.user) {
             loggedInUser  = data.user;
             loggedInTitle = data.title;
+            startPresencePing();
         }
     } catch (_) {}
     refreshLoginPanel();
@@ -1927,8 +1928,11 @@ function advanceToNextLevel() {
 function startGame() {
     // Never start if main menu is showing
     if (menuScreen.classList.contains('visible')) return;
-    // Only allow starting from levels screen, death screen, or level complete screen
-    if (!(currentTitleTab === 'levels' || state === 'dead' || state === 'levelcomplete')) return;
+    // Allow matchmaking to bypass tab check
+    if (!mmInMatch) {
+        // Only allow starting from levels screen, death screen, or level complete screen
+        if (!(currentTitleTab === 'levels' || state === 'dead' || state === 'levelcomplete')) return;
+    }
 
     state = 'playing';
     score = 0;
@@ -2126,14 +2130,42 @@ window.addEventListener('resize', () => {
 //  MATCHMAKING SYSTEM
 // ──────────────────────────────────────────────────────────
 
-let mmMatchId        = null;  // current active match id
-let mmOpponent       = null;  // opponent username
-let mmLevelIndex     = null;  // level index chosen for match
-let mmPollTimer      = null;  // interval for polling
-let mmScoreTimer     = null;  // interval for pushing score to server
-let mmInMatch        = false; // true while a match game is running
+let mmMatchId        = null;
+let mmOpponent       = null;
+let mmLevelIndex     = null;
+let mmPollTimer      = null;
+let mmScoreTimer     = null;
+let mmOnlineTimer    = null; // polls /api/online while searching
+let mmInMatch        = false;
 let mmMyFinalScore   = 0;
 let mmOppFinalScore  = 0;
+
+// ── Presence ping (keeps player counted as online) ─────────
+let presencePingTimer = null;
+function startPresencePing() {
+    if (presencePingTimer) return;
+    mmPingPresence();
+    presencePingTimer = setInterval(mmPingPresence, 20_000);
+}
+function mmPingPresence() {
+    if (!loggedInUser) return;
+    fetch('/api/online', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'ping' }),
+    }).catch(() => {});
+}
+
+// ── Fetch and display online counts ───────────────────────
+async function mmRefreshOnlineCounts() {
+    try {
+        const res  = await fetch('/api/online');
+        const data = await res.json();
+        const onlineEl = document.getElementById('mm-online-count');
+        const mmEl     = document.getElementById('mm-mm-count');
+        if (onlineEl) onlineEl.textContent = data.online      ?? '—';
+        if (mmEl)     mmEl.textContent     = data.matchmaking ?? '—';
+    } catch { /* ignore */ }
+}
 
 // ── Show / hide helpers ────────────────────────────────────
 function mmShowScreen(id) {
@@ -2174,6 +2206,11 @@ async function startMatchmaking() {
     // Clear previous log
     const log = document.getElementById('mm-search-log');
     if (log) log.innerHTML = '';
+
+    // Start presence ping + online counter refresh
+    startPresencePing();
+    mmRefreshOnlineCounts();
+    mmOnlineTimer = setInterval(mmRefreshOnlineCounts, 5000);
 
     mmLog('Searching for a match. This could take a while due to low player count...', 'warn');
     mmLog('Joining matchmaking queue...', 'info');
@@ -2228,7 +2265,9 @@ async function mmPoll() {
 
 async function cancelMatchmaking() {
     clearInterval(mmPollTimer);
-    mmPollTimer = null;
+    clearInterval(mmOnlineTimer);
+    mmPollTimer   = null;
+    mmOnlineTimer = null;
     mmLog('Cancelled matchmaking.', 'warn');
     await fetch('/api/matchmaking', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -2237,12 +2276,45 @@ async function cancelMatchmaking() {
     mmReturnToMenu();
 }
 
-// ── Match found — load pre-game screen ────────────────────
+// ── Web Audio beep for countdown ──────────────────────────
+function mmPlayBeep(freq = 880, duration = 0.12, vol = 0.35) {
+    try {
+        const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type      = 'square';
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(vol, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + duration);
+        osc.onended = () => ctx.close();
+    } catch (e) { /* browser may block without interaction */ }
+}
+
+// ── Match found — show search-screen countdown then load pre-game ─
 async function mmOnMatched(data) {
     mmMatchId    = data.matchId;
     mmOpponent   = data.opponent;
     mmLevelIndex = data.levelIndex;
 
+    // Stay on searching screen and count down 3→0 with beeps
+    mmLog(`Opponent found: ${mmOpponent}!`, 'ok');
+
+    for (let i = 3; i >= 0; i--) {
+        if (i === 0) {
+            mmPlayBeep(1200, 0.25, 0.5); // higher final beep
+            mmLog('Joining!', 'ok');
+        } else {
+            mmPlayBeep(660, 0.12, 0.35);
+            mmLog(`Joining in ${i}...`, 'info');
+        }
+        await new Promise(r => setTimeout(r, 1000));
+    }
+
+    // Now switch to pre-game cards
     mmShowScreen('mm-pregame');
 
     // Load player info for both sides in parallel
@@ -2259,15 +2331,14 @@ async function mmOnMatched(data) {
     document.getElementById('mm-opp-name-pre').textContent = mmOpponent.toUpperCase();
     mmPopulateCard('mm-opp-title', 'mm-opp-stats', oppInfo);
 
-    // Show level name (resolve from loaded levels array)
+    // Show level name
     const lvl = levels[mmLevelIndex];
     const levelDisplayName = lvl ? lvl.name : `Level ${mmLevelIndex + 1}`;
     document.getElementById('mm-level-name').textContent = `LEVEL: ${levelDisplayName}`;
 
-    // Countdown 3 → 2 → 1 → GO
+    // Pre-game countdown 3→0
     await mmCountdown();
 
-    // Start the actual game
     mmStartMatchGame();
 }
 
@@ -2324,7 +2395,7 @@ function mmStartMatchGame() {
     mmMyFinalScore  = 0;
     mmOppFinalScore = 0;
 
-    // Activate the chosen level
+    // Activate the chosen level (loads audio but doesn't play yet)
     if (levels[mmLevelIndex]) {
         activateLevel(mmLevelIndex);
     }
@@ -2334,7 +2405,11 @@ function mmStartMatchGame() {
     document.getElementById('mm-opp-score').textContent = '0';
     document.getElementById('mm-opponent-hud').classList.add('visible');
 
-    // Start game
+    // Show HUD and powerup bar (normally shown by startGame via hideLevelSelect)
+    document.getElementById('ui').style.display = '';
+    document.getElementById('powerup-bar').style.display = '';
+
+    // Start game — mmInMatch flag bypasses tab guard
     startGame();
 
     // Push score every 2s + poll opponent score
@@ -2443,8 +2518,10 @@ function mmReturnToMenu() {
     mmLevelIndex = null;
     clearInterval(mmPollTimer);
     clearInterval(mmScoreTimer);
+    clearInterval(mmOnlineTimer);
     mmPollTimer  = null;
     mmScoreTimer = null;
+    mmOnlineTimer = null;
     showMainMenu();
 }
 
