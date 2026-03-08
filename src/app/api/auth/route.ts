@@ -1,5 +1,5 @@
 /**
- * Too Many Beats — Auth API
+ * Too Many Beats — Auth API (Supabase backend)
  *
  * GET  /api/auth?action=me        → { user, title } | { user: null }
  * POST /api/auth  { action: 'login',    username, password }
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   const body   = await req.json().catch(() => ({}));
   const action = body.action as string;
 
-  // ── login ──────────────────────────────────────────────────
+  // ── login ────────────────────────────────────────────────────
   if (action === 'login') {
     const username = (body.username as string | undefined)?.trim() ?? '';
     const password = (body.password as string | undefined) ?? '';
@@ -49,7 +49,6 @@ export async function POST(req: NextRequest) {
     const users = await readUsers();
     const found = users.find(u => u.username.toLowerCase() === username.toLowerCase());
 
-    // if we have no user or the stored hash is missing/invalid, bail out
     if (!found || !found.password_hash || !(await bcrypt.compare(password, found.password_hash))) {
       return NextResponse.json({ error: 'Incorrect username or password.' }, { status: 401 });
     }
@@ -61,7 +60,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, user: found.username, title: found.active_title ?? null });
   }
 
-  // ── register ───────────────────────────────────────────────
+  // ── register ─────────────────────────────────────────────────
   if (action === 'register') {
     const username = (body.username as string | undefined)?.trim() ?? '';
     const password = (body.password as string | undefined) ?? '';
@@ -84,16 +83,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'That username is already taken.' }, { status: 409 });
     }
 
-    const newUser = {
+    await createUser({
       username,
       password_hash: await bcrypt.hash(password, 12),
-      active_title:  null as string | null,
-      titles:       [] as string[],
+      active_title:  null,
+      ship_color:    'auto',
+      titles:        [],
       created_at:    new Date().toISOString(),
-    };
-
-    // insert the new row instead of overwriting the whole table
-    await createUser(newUser);
+    });
 
     const session = await getSession();
     session.user  = username;
@@ -102,7 +99,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, user: username }, { status: 201 });
   }
 
-  // ── logout ─────────────────────────────────────────────────
+  // ── logout ───────────────────────────────────────────────────
   if (action === 'logout') {
     const session = await getSession();
     session.destroy();
