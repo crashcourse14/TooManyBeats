@@ -149,15 +149,118 @@ function showNewsScreen() {
     setTimeout(() => ns.classList.add('visible'), 60);
 }
 
-function dismissNews() {
+function dismissNews() { // eslint-disable-line no-unused-vars
     const ns = document.getElementById('news-screen');
-    if (!ns) { showLevelSelect(); return; }
+    if (!ns) { showMainMenu(); return; }
     ns.classList.remove('visible');
     ns.classList.add('hidden');
-    setTimeout(() => showLevelSelect(), 480);
+    setTimeout(() => showMainMenu(), 480);
 }
 
 // ──────────────────────────────────────────────────────────
+//  MAIN MENU
+// ──────────────────────────────────────────────────────────
+
+const menuScreen  = document.getElementById('main-menu');
+const menuCanvas  = document.getElementById('menu-canvas');
+const menuCtx     = menuCanvas.getContext('2d');
+const backBtn     = document.getElementById('back-btn');
+
+// Keep menu canvas sized to window
+function resizeMenuCanvas() {
+    menuCanvas.width  = window.innerWidth;
+    menuCanvas.height = window.innerHeight;
+}
+resizeMenuCanvas();
+window.addEventListener('resize', resizeMenuCanvas);
+
+// Idle player animation state
+let menuPlayerY   = 0;
+let menuPlayerHue = 0;
+let menuAnimId    = null;
+
+function drawMenuPlayer() {
+    menuCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);
+
+    const cx = menuCanvas.width  / 2;
+    const cy = menuCanvas.height / 2;
+
+    // gentle bob
+    menuPlayerY  += 0.04;
+    menuPlayerHue = (menuPlayerHue + 0.4) % 360;
+
+    const bob = Math.sin(menuPlayerY) * 8;
+    const [r, g, b] = hslToRgb(menuPlayerHue, 100, 60);
+    const col = `rgb(${r},${g},${b})`;
+
+    const pw = 44, ph = 30;
+    const px = cx - pw / 2;
+    const py = cy + bob - ph / 2;
+
+    // glow
+    menuCtx.shadowBlur  = 30;
+    menuCtx.shadowColor = col;
+
+    // body
+    menuCtx.fillStyle = col;
+    menuCtx.beginPath();
+    roundRect(menuCtx, px, py, pw, ph, 6);
+    menuCtx.fill();
+
+    // white stripe
+    menuCtx.fillStyle = 'rgba(255,255,255,0.6)';
+    menuCtx.beginPath();
+    roundRect(menuCtx, px + pw - 16, py + 4, 10, ph - 8, 4);
+    menuCtx.fill();
+
+    // engine glow
+    const grad = menuCtx.createRadialGradient(px - 4, cy + bob, 0, px - 4, cy + bob, 22);
+    grad.addColorStop(0, `rgba(${r},${g},${b},0.8)`);
+    grad.addColorStop(1, 'transparent');
+    menuCtx.fillStyle = grad;
+    menuCtx.beginPath();
+    menuCtx.arc(px - 4, cy + bob, 12, 0, Math.PI * 2);
+    menuCtx.fill();
+
+    menuCtx.shadowBlur = 0;
+
+    menuAnimId = requestAnimationFrame(drawMenuPlayer);
+}
+
+function showMainMenu() {
+    // Hide all sub-screens and top-nav
+    hideLevelSelect();
+    menuScreen.classList.add('visible');
+    backBtn.classList.remove('visible');
+
+    // Update login button label
+    const lb = document.getElementById('menu-btn-login');
+    if (lb) lb.textContent = loggedInUser ? `👤  PROFILE` : '⚡  LOGIN';
+
+    // Start idle animation
+    if (menuAnimId) cancelAnimationFrame(menuAnimId);
+    drawMenuPlayer();
+}
+
+function hideMainMenu() {
+    menuScreen.classList.remove('visible');
+    if (menuAnimId) { cancelAnimationFrame(menuAnimId); menuAnimId = null; }
+    menuCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);
+}
+
+// Navigate from main menu to a sub-screen
+function goToScreen(tab) {
+    hideMainMenu();
+    topNav.classList.add('visible');
+    showTitleScreen(tab);
+    backBtn.classList.add('visible');
+}
+
+// Back button — return to main menu from any sub-screen
+function goToMainMenu() {
+    hideLevelSelect();
+    showMainMenu();
+}
 //  LOADING
 // ──────────────────────────────────────────────────────────
 
@@ -907,8 +1010,8 @@ function showTitleScreen(tab) {
 }
 
 function showLevelSelect() {
-    topNav.classList.add('visible');
-    showTitleScreen('levels');
+    // After a game ends, return via goToScreen so Back button is visible
+    goToScreen('levels');
 }
 
 // Called by the mobile ▶ LAUNCH LEVEL button
@@ -1433,11 +1536,13 @@ async function pickTitle(titleId) {
 
 // ── Panel refresh ───────────────────────────────────────────
 function refreshLoginPanel() {
-    const navBtn = document.getElementById('nav-btn-login');
+    const navBtn     = document.getElementById('nav-btn-login');
+    const menuBtnLogin = document.getElementById('menu-btn-login');
 
     if (loggedInUser) {
         navBtn.textContent = '👤 PROFILE';
         navBtn.classList.add('logged-in');
+        if (menuBtnLogin) menuBtnLogin.textContent = '👤  PROFILE';
 
         document.getElementById('auth-tab-row').style.display  = 'none';
         document.getElementById('login-card').style.display    = 'none';
@@ -1449,6 +1554,7 @@ function refreshLoginPanel() {
     } else {
         navBtn.textContent = '⚡ LOGIN';
         navBtn.classList.remove('logged-in');
+        if (menuBtnLogin) menuBtnLogin.textContent = '⚡  LOGIN';
 
         document.getElementById('auth-tab-row').style.display  = 'flex';
         document.getElementById('login-card').style.display    = 'flex';
