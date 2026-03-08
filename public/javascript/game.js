@@ -2381,8 +2381,7 @@ function mmPopulateCard(titleElId, statsElId, info) {
 
     statsEl.innerHTML =
         `<strong>#${info.rank ?? '—'}</strong> LEADERBOARD<br>` +
-        `BEST: <strong>${(info.bestScore ?? 0).toLocaleString()}</strong>` +
-        `TITLE: <strong>${info.active_title ?? 'No Title'}</strong>`;
+        `BEST: <strong>${(info.bestScore ?? 0).toLocaleString()}</strong>`;
 }
 
 function mmCountdown() {
@@ -2945,6 +2944,97 @@ function updateNewPowerups() {
         document.getElementById('pu-double').classList.remove('active');
     }
 }
+
+// ──────────────────────────────────────────────────────────
+//  VERSION CHECK
+// ──────────────────────────────────────────────────────────
+
+async function checkVersion() {
+    try {
+        const res  = await fetch('/api/version');
+        const data = await res.json();
+        if (data.version && data.version !== GAME_VERSION) {
+            showUpdateBanner(data.version);
+        }
+    } catch { /* silently ignore network errors */ }
+}
+
+function showUpdateBanner(newVersion) {
+    const banner = document.createElement('div');
+    banner.id = 'update-banner';
+    banner.innerHTML = `
+        <div id="update-banner-inner">
+            <span id="update-banner-icon">🚀</span>
+            <div id="update-banner-text">
+                <div id="update-banner-title">GAME UPDATED</div>
+                <div id="update-banner-sub">${newVersion} is available — refresh to get the latest</div>
+            </div>
+            <button id="update-banner-refresh" onclick="location.reload()">REFRESH</button>
+            <button id="update-banner-close" onclick="document.getElementById('update-banner').remove()">✕</button>
+        </div>`;
+    Object.assign(banner.style, {
+        position:   'fixed',
+        bottom:     '80px',
+        left:       '50%',
+        transform:  'translateX(-50%) translateY(20px)',
+        zIndex:     '9999',
+        opacity:    '0',
+        transition: 'opacity 0.4s ease, transform 0.4s ease',
+        pointerEvents: 'auto',
+    });
+    document.body.appendChild(banner);
+
+    // Slide in
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+        banner.style.opacity   = '1';
+        banner.style.transform = 'translateX(-50%) translateY(0)';
+    }));
+}
+
+// Inject banner styles once
+(function() {
+    const s = document.createElement('style');
+    s.textContent = `
+    #update-banner-inner {
+        display: flex; align-items: center; gap: 14px;
+        background: rgba(0,0,0,0.85);
+        border: 1px solid rgba(0,255,200,0.35);
+        border-radius: 12px;
+        padding: 14px 18px;
+        box-shadow: 0 0 30px rgba(0,255,180,0.15);
+        backdrop-filter: blur(10px);
+        white-space: nowrap;
+    }
+    #update-banner-icon { font-size: 22px; }
+    #update-banner-title {
+        font-family: 'Orbitron', monospace; font-size: 11px;
+        font-weight: 700; letter-spacing: 3px; color: #00ffc8;
+    }
+    #update-banner-sub {
+        font-family: 'Share Tech Mono', monospace; font-size: 10px;
+        letter-spacing: 1px; color: rgba(255,255,255,0.45);
+        margin-top: 3px;
+    }
+    #update-banner-refresh {
+        font-family: 'Orbitron', monospace; font-size: 10px;
+        font-weight: 700; letter-spacing: 2px;
+        background: #00ffc8; color: #000; border: none;
+        border-radius: 6px; padding: 8px 16px; cursor: pointer;
+        transition: background 0.15s, transform 0.1s;
+    }
+    #update-banner-refresh:hover { background: #66ffe0; transform: scale(1.04); }
+    #update-banner-close {
+        background: none; border: none;
+        color: rgba(255,255,255,0.3); font-size: 14px;
+        cursor: pointer; padding: 4px 6px; line-height: 1;
+        transition: color 0.15s;
+    }
+    #update-banner-close:hover { color: white; }
+    `;
+    document.head.appendChild(s);
+})();
+
+checkVersion();
 
 // ──────────────────────────────────────────────────────────
 
