@@ -2532,10 +2532,10 @@ function mmShowResults(winner) {
         banner.textContent = 'DRAW';
         banner.className   = 'mm-result-banner draw';
     } else if (iWon) {
-        banner.textContent = '🏆 YOU WIN!';
+        banner.textContent = '🏆 YOU WON!';
         banner.className   = 'mm-result-banner win';
     } else {
-        banner.textContent = '💀 YOU LOSE';
+        banner.textContent = 'YOU LOST';
         banner.className   = 'mm-result-banner lose';
     }
 
