@@ -1086,6 +1086,14 @@
 <!-- Back button (visible on sub-screens) -->
 <button id="back-btn" onclick="goToMainMenu()">← BACK</button>
 
+<!-- Top nav bar (hidden — kept for JS compatibility) -->
+<div id="top-nav" style="display:none">
+  <button class="nav-btn active-tab" id="nav-btn-levels"      onclick="showTitleScreen('levels')">▤ LEVELS</button>
+  <button class="nav-btn"            id="nav-btn-leaderboard" onclick="showTitleScreen('leaderboard')">🏆 LEADERBOARD</button>
+  <button class="nav-btn"            id="nav-btn-links"       onclick="showTitleScreen('links')">🔗 LINKS</button>
+  <button class="nav-btn"            id="nav-btn-login"       onclick="showTitleScreen('login')">⚡ LOGIN</button>
+</div>
+
 <!-- Level Select -->
 <div id="level-select">
   <div id="ls-title">TOO MANY BEATS</div>
