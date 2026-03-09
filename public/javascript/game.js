@@ -2036,6 +2036,7 @@ function activatePowerup(type) {
     if (type === 'ghost') {
         ghost = true; ghostTimer = 360;
         document.getElementById('pu-ghost').classList.add('active');
+        floatText(canvas.width / 2, canvas.height / 2 - 60, '👻 GHOST!', '#ccccff');
     }
     if (type === 'double') {
         doubleScore = true; doubleTimer = 480;
@@ -2312,14 +2313,19 @@ async function mmPoll() {
         });
         const data = await res.json();
 
-        if (data.status === 'expired') {
+        if (data.status === 'matched') {
+            clearInterval(mmPollTimer);
+            mmPollTimer = null;
+            mmLog(`Opponent found: ${data.opponent}!`, 'ok');
+            await mmOnMatched(data);
+        } else if (data.status === 'expired') {
             clearInterval(mmPollTimer);
             mmPollTimer = null;
             mmLog('Queue expired. Try again.', 'warn');
             showToast('QUEUE EXPIRED — TRY AGAIN');
             mmReturnToMenu();
         } else {
-            mmLog('Still searching...', '');
+            mmLog('Still searching...', 'info');
         }
     } catch { /* keep polling */ }
 }
