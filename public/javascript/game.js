@@ -2325,7 +2325,9 @@ async function mmPoll() {
             showToast('QUEUE EXPIRED — TRY AGAIN');
             mmReturnToMenu();
         }
-    } catch { /* keep polling */ }
+    } catch { 
+        mmLog('Connection error while searching.', 'error');
+    }
 }
 
 async function cancelMatchmaking() {

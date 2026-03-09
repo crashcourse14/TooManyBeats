@@ -997,7 +997,7 @@
         </div>
       </div>
       <div class="news-card-headline">Season 1 Is Live!</div>
-      <div class="news-card-body">Welcome to <strong>Season 1</strong> of Too Many Beats. Compete across 22+ levels, chase your best score, and climb the leaderboard. Top players will earn exclusive <strong>titles</strong> displayed on the leaderboard for all to see.</div>
+      <div class="news-card-body">Welcome to <strong>Season 1</strong> of Too Many Beats. Compete across 30+ levels, chase your best score, and climb the leaderboard. Top players will earn exclusive <strong>titles</strong> displayed on the leaderboard for all to see.</div>
     </div>
 
     <div class="news-card">
@@ -1076,7 +1076,7 @@
 
   <div id="menu-buttons">
     <button class="menu-btn" onclick="startMatchmaking()">⚔️ &nbsp;MATCH MAKE</button>
-    <button class="menu-btn" onclick="goToScreen('levels')">▤ &nbsp;LEVELS</button>
+    <button class="menu-btn" onclick="goToScreen('levels')">▤ &nbsp;PRACTICE</button>
     <button class="menu-btn" onclick="goToScreen('leaderboard')">🏆 &nbsp;LEADERBOARD</button>
     <button class="menu-btn" onclick="goToScreen('links')">🔗 &nbsp;LINKS</button>
     <button class="menu-btn" id="menu-btn-login" onclick="goToScreen('login')">⚡ &nbsp;LOGIN</button>
@@ -1085,14 +1085,6 @@
 
 <!-- Back button (visible on sub-screens) -->
 <button id="back-btn" onclick="goToMainMenu()">← BACK</button>
-
-<!-- Top nav bar (hidden — kept for JS compatibility) -->
-<div id="top-nav" style="display:none">
-  <button class="nav-btn active-tab" id="nav-btn-levels"      onclick="showTitleScreen('levels')">▤ LEVELS</button>
-  <button class="nav-btn"            id="nav-btn-leaderboard" onclick="showTitleScreen('leaderboard')">🏆 LEADERBOARD</button>
-  <button class="nav-btn"            id="nav-btn-links"       onclick="showTitleScreen('links')">🔗 LINKS</button>
-  <button class="nav-btn"            id="nav-btn-login"       onclick="showTitleScreen('login')">⚡ LOGIN</button>
-</div>
 
 <!-- Level Select -->
 <div id="level-select">
