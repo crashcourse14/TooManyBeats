@@ -184,55 +184,133 @@ function resizeMenuCanvas() {
 resizeMenuCanvas();
 window.addEventListener('resize', resizeMenuCanvas);
 
-// Idle player animation state
-let menuPlayerY   = 0;
-let menuPlayerHue = 0;
-let menuAnimId    = null;
+// ── Menu background animation state ────────────────────────
+let menuTick   = 0;
+let menuAnimId = null;
+
+// Stars for menu parallax
+const menuStars = Array.from({ length: 180 }, () => ({
+    x: Math.random(), y: Math.random(),
+    r: Math.random() * 1.4 + 0.3,
+    speed: Math.random() * 0.18 + 0.04,
+    bright: Math.random(),
+}));
+
+// Formation of ships flying right-to-left across the screen
+const FORMATION = [
+    // [lane offset fraction of height, size multiplier, hue offset, phase offset]
+    [0.52, 1.8, 0,   0    ],  // hero ship — large, centre
+    [0.46, 1.0, 30,  0.6  ],  // wingman above
+    [0.58, 1.0, -20, 1.1  ],  // wingman below
+    [0.38, 0.6, 60,  1.7  ],  // distant escort high
+    [0.66, 0.6, -50, 2.3  ],  // distant escort low
+];
 
 function drawMenuPlayer() {
-    menuCtx.clearRect(0, 0, menuCanvas.width, menuCanvas.height);
+    const W = menuCanvas.width;
+    const H = menuCanvas.height;
+    menuCtx.clearRect(0, 0, W, H);
+    menuTick += 0.6;
 
-    const cx = menuCanvas.width  / 2;
-    const cy = menuCanvas.height / 2;
+    // ── Parallax stars ────────────────────────────────────
+    for (const s of menuStars) {
+        s.x -= s.speed * 0.0012;
+        if (s.x < 0) { s.x = 1; s.y = Math.random(); }
+        const alpha = 0.18 + s.bright * 0.55 + Math.sin(menuTick * 0.018 + s.bright * 5) * 0.12;
+        menuCtx.fillStyle = `rgba(255,255,255,${alpha})`;
+        menuCtx.beginPath();
+        menuCtx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
+        menuCtx.fill();
+    }
 
-    // gentle bob
-    menuPlayerY  += 0.04;
-    menuPlayerHue = (menuPlayerHue + 0.4) % 360;
+    // ── Scan-line grid (perspective) ──────────────────────
+    menuCtx.save();
+    const gridAlpha = 0.045;
+    const horizY = H * 0.55;
+    const scrollX = (menuTick * 1.6) % 90;
 
-    const bob = Math.sin(menuPlayerY) * 8;
-    const [r, g, b] = hslToRgb(menuPlayerHue, 100, 60);
-    const col = `rgb(${r},${g},${b})`;
+    // Horizontal lines (perspective spacing)
+    for (let i = 0; i < 10; i++) {
+        const t = i / 9;
+        const y = horizY + (H - horizY) * (t * t);
+        const alpha = gridAlpha * (0.3 + t * 0.7);
+        menuCtx.strokeStyle = `rgba(0,200,255,${alpha})`;
+        menuCtx.lineWidth = 0.5;
+        menuCtx.beginPath();
+        menuCtx.moveTo(0, y);
+        menuCtx.lineTo(W, y);
+        menuCtx.stroke();
+    }
+    // Vertical lines (converge to horizon centre)
+    const vx = W * 0.72;
+    for (let i = -8; i <= 8; i++) {
+        const baseX = vx + i * 90 - scrollX;
+        menuCtx.strokeStyle = `rgba(0,200,255,${gridAlpha * 0.6})`;
+        menuCtx.lineWidth = 0.5;
+        menuCtx.beginPath();
+        menuCtx.moveTo(vx, horizY);
+        menuCtx.lineTo(baseX, H);
+        menuCtx.stroke();
+    }
+    menuCtx.restore();
 
-    const pw = 44, ph = 30;
-    const px = cx - pw / 2;
-    const py = cy + bob - ph / 2;
+    // ── Ambient right-side glow ───────────────────────────
+    const hue = (menuTick * 0.15) % 360;
+    const ambGrad = menuCtx.createRadialGradient(W * 0.78, H * 0.38, 0, W * 0.78, H * 0.38, W * 0.55);
+    ambGrad.addColorStop(0, `hsla(${hue},100%,65%,0.055)`);
+    ambGrad.addColorStop(1, 'transparent');
+    menuCtx.fillStyle = ambGrad;
+    menuCtx.fillRect(0, 0, W, H);
 
-    // glow
-    menuCtx.shadowBlur  = 30;
-    menuCtx.shadowColor = col;
+    // ── Ship formation ────────────────────────────────────
+    for (let fi = FORMATION.length - 1; fi >= 0; fi--) {
+        const [yFrac, scale, hueOff, phase] = FORMATION[fi];
+        const shipHue = (hue + hueOff) % 360;
+        const [sr, sg, sb] = hslToRgb(shipHue, 100, 60);
+        const col = `rgb(${sr},${sg},${sb})`;
 
-    // body
-    menuCtx.fillStyle = col;
-    menuCtx.beginPath();
-    roundRect(menuCtx, px, py, pw, ph, 6);
-    menuCtx.fill();
+        // Each ship scrolls from right to left at its own speed
+        const baseX = W * 0.62 + fi * 28;
+        const speed = 0.55 + fi * 0.12;
+        const period = W * 1.5;
+        const raw = ((menuTick * speed + fi * 380) % period);
+        const sx = W + 120 - raw;     // enters from right edge
+        if (sx < -120) continue;      // offscreen left — skip
 
-    // white stripe
-    menuCtx.fillStyle = 'rgba(255,255,255,0.6)';
-    menuCtx.beginPath();
-    roundRect(menuCtx, px + pw - 16, py + 4, 10, ph - 8, 4);
-    menuCtx.fill();
+        const bob = Math.sin(menuTick * 0.022 + phase) * (6 * scale);
+        const sy = H * yFrac + bob;
 
-    // engine glow
-    const grad = menuCtx.createRadialGradient(px - 4, cy + bob, 0, px - 4, cy + bob, 22);
-    grad.addColorStop(0, `rgba(${r},${g},${b},0.8)`);
-    grad.addColorStop(1, 'transparent');
-    menuCtx.fillStyle = grad;
-    menuCtx.beginPath();
-    menuCtx.arc(px - 4, cy + bob, 12, 0, Math.PI * 2);
-    menuCtx.fill();
+        const pw = Math.round(56 * scale);
+        const ph = Math.round(32 * scale);
 
-    menuCtx.shadowBlur = 0;
+        menuCtx.save();
+        menuCtx.shadowBlur  = 28 * scale;
+        menuCtx.shadowColor = col;
+
+        // Body
+        menuCtx.fillStyle = col;
+        menuCtx.beginPath();
+        roundRect(menuCtx, sx - pw * 0.5, sy - ph * 0.5, pw, ph, 6 * scale);
+        menuCtx.fill();
+
+        // Cockpit stripe
+        menuCtx.fillStyle = 'rgba(255,255,255,0.55)';
+        menuCtx.beginPath();
+        roundRect(menuCtx, sx - pw * 0.5 + pw * 0.58, sy - ph * 0.5 + ph * 0.18,
+            pw * 0.24, ph * 0.64, 3 * scale);
+        menuCtx.fill();
+
+        // Engine trail
+        menuCtx.shadowBlur = 0;
+        const trailLen = (40 + Math.random() * 18) * scale;
+        const trailGrad = menuCtx.createLinearGradient(sx - pw * 0.5, sy, sx - pw * 0.5 - trailLen, sy);
+        trailGrad.addColorStop(0, `rgba(${sr},${sg},${sb},0.7)`);
+        trailGrad.addColorStop(1, 'transparent');
+        menuCtx.fillStyle = trailGrad;
+        menuCtx.fillRect(sx - pw * 0.5 - trailLen, sy - ph * 0.09, trailLen, ph * 0.18);
+
+        menuCtx.restore();
+    }
 
     menuAnimId = requestAnimationFrame(drawMenuPlayer);
 }
@@ -245,7 +323,23 @@ function showMainMenu() {
     const lb = document.getElementById('menu-btn-login');
     if (lb) lb.textContent = loggedInUser ? `👤  PROFILE` : '⚡  LOGIN';
 
+    // Update footer version
+    const vt = document.getElementById('menu-version-tag');
+    if (vt) {
+        fetch('/api/version').then(r => r.json()).then(d => {
+            if (vt) vt.textContent = d.version || 'BETA';
+        }).catch(() => { if (vt) vt.textContent = 'BETA'; });
+    }
+
+    // Update online pill
+    mmRefreshOnlineCounts().then(() => {
+        const onlineEl = document.getElementById('mm-online-count');
+        const menuPill = document.getElementById('menu-online-count');
+        if (menuPill && onlineEl) menuPill.textContent = onlineEl.textContent;
+    }).catch(() => {});
+
     if (menuAnimId) cancelAnimationFrame(menuAnimId);
+    menuTick = 0;
     drawMenuPlayer();
 }
 
@@ -407,6 +501,10 @@ let beatCountdownLast = 0,
     beatCalmFlash = 0;
 let levelCompleteTime = 0;
 const LEVEL_COMPLETE_DELAY = 5;
+
+// Run statistics — reset each startGame()
+let runDodgedCount  = 0;   // obstacles successfully passed
+let runStartEpoch   = 0;   // Date.now() at run start, for elapsed time
 
 const stars = [];
 for (let i = 0; i < 200; i++)
@@ -874,124 +972,26 @@ function drawTitle() {
 }
 
 function drawDead() {
-    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    // Dark vignette behind the HTML run-summary overlay
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const cx = canvas.width / 2,
-        cy = canvas.height / 2;
-    ctx.shadowBlur = 50;
-    ctx.shadowColor = '#ff0044';
-    ctx.fillStyle = '#ff2255';
-    ctx.font = 'bold 80px Orbitron, monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('TERMINATED', cx, cy - 70);
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.font = '22px Share Tech Mono, monospace';
-    ctx.fillText(`SCORE: ${Math.floor(score)}`, cx, cy - 10);
-    if (Math.floor(score) >= bestScore) {
-        ctx.fillStyle = '#ffff00';
-        ctx.font = 'bold 16px Orbitron, monospace';
-        ctx.fillText('✦ NEW BEST ✦', cx, cy + 28);
-    }
-    if (currentLevel) {
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        ctx.font = '12px Share Tech Mono, monospace';
-        ctx.fillText(`LEVEL ${currentLevelIndex+1} · ${currentLevel.name}`, cx, cy + 60);
-    }
-    const pa = 0.4 + Math.sin(frame * 0.07) * 0.35;
-    ctx.globalAlpha = pa;
-    ctx.fillStyle = 'white';
-    ctx.font = 'bold 15px Orbitron, monospace';
-    ctx.fillText('SPACE TO RETRY  ·  ESC TO SELECT LEVEL', cx, cy + 100);
-    ctx.globalAlpha = 1;
 }
 
+
+
 function drawLevelComplete() {
-    const cx = canvas.width / 2,
-        cy = canvas.height / 2,
-        hasNext = currentLevelIndex < levels.length - 1;
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    // Dark vignette behind the HTML run-summary overlay
+    ctx.fillStyle = 'rgba(0,0,0,0.60)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    for (let i = 0; i < 4; i++) {
-        const r = 60 + i * 55 + (frame % 90) * 1.2 + i * 30,
-            alpha = Math.max(0, 0.25 - i * 0.05 - (frame % 90) * 0.003);
-        ctx.strokeStyle = `hsla(${(globalHue+i*40)%360},100%,65%,${alpha})`;
-        ctx.lineWidth = 2;
+    // Confetti particles still render on canvas for that celebratory burst
+    for (let i = 0; i < 3; i++) {
+        const r = 60 + i * 70 + (frame % 100) * 1.4,
+            alpha = Math.max(0, 0.18 - i * 0.04 - (frame % 100) * 0.0018);
+        ctx.strokeStyle = `hsla(${(globalHue + i * 40) % 360},100%,65%,${alpha})`;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(cx, cy - 30, r, 0, Math.PI * 2);
+        ctx.arc(canvas.width / 2, canvas.height / 2, r, 0, Math.PI * 2);
         ctx.stroke();
-    }
-    ctx.save();
-    for (let i = 2; i >= 0; i--) {
-        ctx.shadowBlur = 50 - i * 12;
-        ctx.shadowColor = hsl((globalHue + 60) % 360);
-        ctx.fillStyle = i === 0 ? '#88ffcc' : hsl((globalHue + 60) % 360, 100, 65);
-        ctx.font = 'bold 68px Orbitron, monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('LEVEL CLEAR', cx + i * 1.5, cy - 75 + i * 1.5);
-    }
-    ctx.restore();
-    ctx.shadowBlur = 0;
-    if (currentLevel) {
-        ctx.fillStyle = 'rgba(255,255,255,0.5)';
-        ctx.font = '13px Share Tech Mono, monospace';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`LEVEL ${currentLevelIndex+1}  ·  ${currentLevel.name}`, cx, cy - 28);
-    }
-    ctx.fillStyle = '#00ffff';
-    ctx.font = 'bold 28px Orbitron, monospace';
-    ctx.fillText(`${Math.floor(score)}  PTS`, cx, cy + 18);
-    if (Math.floor(score) >= bestScore) {
-        const pa2 = 0.7 + Math.sin(frame * 0.1) * 0.3;
-        ctx.globalAlpha = pa2;
-        ctx.fillStyle = '#ffff00';
-        ctx.font = 'bold 14px Orbitron, monospace';
-        ctx.fillText('✦ NEW BEST ✦', cx, cy + 52);
-        ctx.globalAlpha = 1;
-    }
-    if (hasNext) {
-        const next = levels[currentLevelIndex + 1],
-            boxW = 300,
-            boxH = 72,
-            boxX = cx - boxW / 2,
-            boxY = cy + 72;
-        ctx.fillStyle = 'rgba(255,255,255,0.05)';
-        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-        ctx.lineWidth = 1;
-        roundRect(ctx, boxX, boxY, boxW, boxH, 8);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        ctx.font = '9px Share Tech Mono, monospace';
-        ctx.fillText('UP NEXT', cx, boxY + 16);
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 15px Orbitron, monospace';
-        ctx.fillText(`LVL ${currentLevelIndex+2}  ·  ${next.name}`, cx, boxY + 36);
-        ctx.fillStyle = 'rgba(255,255,255,0.35)';
-        ctx.font = '10px Share Tech Mono, monospace';
-        ctx.fillText(`${next.numLanes||3} LANES  ·  ${spawnRateLabel(next.spawnRate||90)} DIFFICULTY`, cx, boxY + 56);
-        const pa = 0.5 + Math.sin(frame * 0.06) * 0.35;
-        ctx.globalAlpha = pa;
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 14px Orbitron, monospace';
-        ctx.fillText('SPACE TO CONTINUE NOW  ·  ESC FOR MENU', cx, cy + 195);
-        ctx.globalAlpha = 1;
-    } else {
-        ctx.fillStyle = hsl((globalHue + 60) % 360, 100, 70);
-        ctx.font = 'bold 18px Orbitron, monospace';
-        ctx.fillText('ALL LEVELS COMPLETE!', cx, cy + 85);
-        ctx.fillStyle = 'rgba(255,255,255,0.4)';
-        ctx.font = '12px Share Tech Mono, monospace';
-        ctx.fillText('YOU ARE THE CHAMPION', cx, cy + 112);
-        const pa = 0.5 + Math.sin(frame * 0.06) * 0.35;
-        ctx.globalAlpha = pa;
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 14px Orbitron, monospace';
-        ctx.fillText('SPACE TO REPLAY  ·  ESC FOR MENU', cx, cy + 160);
-        ctx.globalAlpha = 1;
     }
 }
 
@@ -1268,6 +1268,222 @@ async function submitScore(runScore, peakCombo) {
     }
 }
 
+// ──────────────────────────────────────────────────────────
+//  RUN SUMMARY OVERLAY
+// ──────────────────────────────────────────────────────────
+
+let rsSummaryMode = 'dead'; // 'dead' | 'complete'
+let rsConfettiAnimId = null;
+
+function formatTime(ms) {
+    const s = Math.floor(ms / 1000);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function spawnRateLabel(sr) {
+    if (!sr) return 'NORMAL';
+    if (sr <= 45)  return 'EXTREME';
+    if (sr <= 60)  return 'HARD';
+    if (sr <= 80)  return 'NORMAL';
+    return 'EASY';
+}
+
+// Called by die() and completeLevel() after XP is fetched
+function showRunSummary(type, finalScore, xpData) {
+    rsSummaryMode = type;
+    const isDead     = type === 'dead';
+    const isComplete = type === 'complete';
+    const accent     = isDead ? '#ff2255' : '#00ffcc';
+    const elapsed    = Date.now() - runStartEpoch;
+    const isNewBest  = finalScore >= bestScore && finalScore > 0;
+
+    // Set accent colour CSS var
+    const card = document.getElementById('run-summary-card');
+    card.style.setProperty('--rs-accent', accent);
+
+    // Badge + title
+    document.getElementById('rs-badge').textContent      = isDead ? 'RUN ENDED' : 'LEVEL CLEAR';
+    document.getElementById('rs-title').textContent      = isDead ? 'TERMINATED' : 'LEVEL CLEAR';
+    document.getElementById('rs-level-name').textContent = currentLevel
+        ? `${currentLevel.name}`.toUpperCase()
+        : '—';
+
+    // New best
+    const nbEl = document.getElementById('rs-new-best');
+    nbEl.classList.toggle('show', isNewBest);
+
+    // Stats
+    document.getElementById('rs-score').textContent   = finalScore.toLocaleString();
+    document.getElementById('rs-score-sub').textContent = isNewBest ? 'NEW PERSONAL BEST' : `BEST: ${bestScore.toLocaleString()}`;
+    document.getElementById('rs-combo').textContent   = `×${peakCombo}`;
+    document.getElementById('rs-combo-sub').textContent = peakCombo >= 100 ? 'LEGENDARY!' : peakCombo >= 50 ? 'INCREDIBLE!' : peakCombo >= 25 ? 'ON FIRE!' : peakCombo >= 10 ? 'HEATING UP' : '';
+    document.getElementById('rs-time').textContent    = formatTime(elapsed);
+    document.getElementById('rs-time-sub').textContent = '';
+    document.getElementById('rs-dodged').textContent  = runDodgedCount.toLocaleString();
+    document.getElementById('rs-dodged-sub').textContent = runDodgedCount >= 100 ? 'INSANE REFLEXES' : runDodgedCount >= 50 ? 'SHARP PILOT' : '';
+
+    // XP bar
+    if (xpData && xpData.ok) {
+        const XP_PER = 20_000;
+        const lvl        = xpData.xpLevel;
+        const levelStartXp = (lvl - 1) * XP_PER;
+        const progressBefore = Math.max(0, (xpData.xp - xpData.earned) - levelStartXp);
+        const progressAfter  = Math.min(XP_PER, xpData.xp - levelStartXp);
+        const pctBefore = Math.min(100, (progressBefore / XP_PER) * 100);
+        const pctAfter  = Math.min(100, (progressAfter  / XP_PER) * 100);
+
+        document.getElementById('rs-xp-earned').textContent    = `+${xpData.earned.toLocaleString()} XP`;
+        document.getElementById('rs-xp-lv-cur').textContent    = `LVL ${lvl}`;
+        document.getElementById('rs-xp-lv-next').textContent   = `LVL ${lvl + 1}`;
+        document.getElementById('rs-xp-sub').textContent       = `${(xpData.xp - levelStartXp).toLocaleString()} / ${XP_PER.toLocaleString()} XP`;
+        document.getElementById('rs-xp-fill-before').style.width = pctBefore + '%';
+        // Animate the after bar after a short delay so the transition is visible
+        const fillAfter = document.getElementById('rs-xp-fill-after');
+        fillAfter.style.transition = 'none';
+        fillAfter.style.width = pctBefore + '%';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            fillAfter.style.transition = 'width 1.2s cubic-bezier(0.4,0,0.2,1) 0.5s';
+            fillAfter.style.width = pctAfter + '%';
+        }));
+
+        if (xpData.leveledUp) {
+            setTimeout(() => showLevelUpFanfare(lvl), 900);
+        }
+    } else {
+        document.getElementById('rs-xp-earned').textContent  = loggedInUser ? '+0 XP' : 'LOG IN TO EARN XP';
+        document.getElementById('rs-xp-fill-before').style.width = '0%';
+        document.getElementById('rs-xp-fill-after').style.width  = '0%';
+    }
+
+    // UP NEXT section (level complete only)
+    const nextSection = document.getElementById('rs-next-section');
+    const hasNext = isComplete && currentLevelIndex < levels.length - 1;
+    nextSection.style.display = hasNext ? '' : 'none';
+    if (hasNext) {
+        const next = levels[currentLevelIndex + 1];
+        document.getElementById('rs-next-name').textContent = `LVL ${currentLevelIndex + 2}  ·  ${next.name}`;
+        document.getElementById('rs-next-meta').textContent =
+            `${next.numLanes || 3} LANES  ·  ${spawnRateLabel(next.spawnRate || 90)} DIFFICULTY`;
+    }
+
+    // Primary button label
+    const primaryBtn = document.getElementById('rs-btn-primary');
+    if (isComplete && hasNext)        primaryBtn.textContent = 'NEXT LEVEL';
+    else if (isComplete && !hasNext)  primaryBtn.textContent = 'PLAY AGAIN';
+    else                              primaryBtn.textContent = 'RETRY';
+
+    // Show the overlay
+    const overlay = document.getElementById('run-summary');
+    overlay.style.display = 'flex';
+    // Force reflow then fade in
+    requestAnimationFrame(() => requestAnimationFrame(() => overlay.classList.add('visible')));
+
+    // Fire confetti on level complete
+    if (isComplete) startSummaryConfetti();
+}
+
+function hideRunSummary() {
+    const overlay = document.getElementById('run-summary');
+    overlay.classList.remove('visible');
+    stopSummaryConfetti();
+    setTimeout(() => { overlay.style.display = 'none'; }, 420);
+}
+
+function rsSummaryPrimary() {
+    hideRunSummary();
+    if (rsSummaryMode === 'complete') {
+        advanceToNextLevel();
+    } else {
+        stopAudio();
+        loadAudio(currentLevel && currentLevel.song);
+        startGame();
+    }
+}
+
+function rsSummaryMenu() {
+    hideRunSummary();
+    stopAudio();
+    combo = 0; score = 0;
+    state = 'title';
+    document.getElementById('ui').style.display = 'none';
+    document.getElementById('powerup-bar').style.display = 'none';
+    showLevelSelect();
+}
+
+// ── Level-up fanfare ─────────────────────────────────────────
+function showLevelUpFanfare(newLevel) {
+    const el = document.getElementById('levelup-fanfare');
+    document.getElementById('lu-level').textContent = `LEVEL ${newLevel}`;
+    const subs = ['KEEP GRINDING', 'STAY SHARP', 'RISING PILOT', 'LEGENDARY STATUS', 'UNTOUCHABLE'];
+    document.getElementById('lu-sub').textContent = subs[(newLevel - 1) % subs.length] || 'KEEP GRINDING';
+
+    // Re-trigger animations by clone trick
+    const flash = document.getElementById('levelup-flash');
+    const text  = document.getElementById('levelup-text');
+    flash.style.animation = 'none';
+    text.style.animation  = 'none';
+    void flash.offsetWidth;
+    void text.offsetWidth;
+    flash.style.animation = '';
+    text.style.animation  = '';
+
+    el.classList.add('active');
+    setTimeout(() => el.classList.remove('active'), 2200);
+
+    // Spawn particle burst on canvas
+    for (let i = 0; i < 10; i++) {
+        setTimeout(() => {
+            spawnParticles(rand(0, canvas.width), rand(0, canvas.height), 20,
+                ['#00ffff', '#00ccff', '#ffffff', '#88ffff', '#0088ff'], 9);
+        }, i * 80);
+    }
+}
+
+// ── Confetti on canvas for level complete ────────────────────
+const confettiPieces = [];
+function startSummaryConfetti() {
+    confettiPieces.length = 0;
+    const cols = ['#00ffcc','#00ffff','#ffff00','#ff88cc','#88ffff','#ffffff','#00ff88'];
+    for (let i = 0; i < 80; i++) confettiPieces.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height * 0.5 - 40,
+        vx: (Math.random() - 0.5) * 5,
+        vy: Math.random() * 3 + 1,
+        rot: Math.random() * Math.PI * 2,
+        rotV: (Math.random() - 0.5) * 0.2,
+        w: Math.random() * 10 + 4,
+        h: Math.random() * 5 + 3,
+        color: cols[Math.floor(Math.random() * cols.length)],
+        life: 1,
+    });
+    animateConfetti();
+}
+function animateConfetti() {
+    if (!confettiPieces.length) return;
+    ctx.save();
+    ctx.setTransform(1,0,0,1,0,0);
+    for (let i = confettiPieces.length - 1; i >= 0; i--) {
+        const p = confettiPieces[i];
+        p.x  += p.vx; p.y += p.vy;
+        p.rot += p.rotV; p.life -= 0.008;
+        if (p.y > canvas.height + 20 || p.life <= 0) { confettiPieces.splice(i,1); continue; }
+        ctx.save();
+        ctx.globalAlpha = p.life;
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+        ctx.restore();
+    }
+    ctx.restore();
+    if (confettiPieces.length > 0) rsConfettiAnimId = requestAnimationFrame(animateConfetti);
+}
+function stopSummaryConfetti() {
+    if (rsConfettiAnimId) cancelAnimationFrame(rsConfettiAnimId);
+    rsConfettiAnimId = null;
+    confettiPieces.length = 0;
+}
+
 function getTitleBadgeHTML(entry) {
     const titleId = entry.title;
     if (!titleId) return '';
@@ -1281,10 +1497,7 @@ function getTitleBadgeHTML(entry) {
         cls = 't-top10';
     } else if (titleId.includes('Top 225') || titleId.includes('Top 100')) {
         cls = 't-top225';
-    } else if (titleId.includes('Weekly Top 3')) {
-        cls = 't-weekly';
-    }
-    else if (titleId.includes('world_record')) {
+    } else if (titleId.includes('world_record')) {
         cls = 't-wr';
         label = 'World Record';
     } else if (titleId.includes('season1_pioneer')) {
@@ -1972,6 +2185,7 @@ function gameLoop() {
             o.scored = true;
             score += combo * 10 * (doubleScore ? 2 : 1);
             comboTimer = 120;
+            runDodgedCount++;
         }
         const px = PLAYER_X,
             py = playerY - PLAYER_H / 2;
@@ -2204,16 +2418,38 @@ function die() {
         localStorage.setItem('neonshift_best', bestScore);
     }
     screenShake = 20;
-    spawnParticles(PLAYER_X + PLAYER_W / 2, playerY, 60, ['#ff0044', '#ff6600', '#ffff00', '#ff00aa', 'white'], 10);
+    spawnParticles(PLAYER_X + PLAYER_W / 2, playerY, 60,
+        ['#ff0044', '#ff6600', '#ffff00', '#ff00aa', 'white'], 10);
     stopAudio();
 
     if (mmInMatch) {
-        // In a match — report death, show results instead of normal leaderboard submit
         mmOnDie(fs).catch(e => console.warn('MM die error:', e));
-    } else {
-        // Normal game — submit to leaderboard
-        submitScore(fs, peakCombo).catch(e => console.warn('Score submit failed:', e.message));
+        return;
     }
+
+    // Fetch XP then show summary
+    (async () => {
+        let xpData = null;
+        if (loggedInUser && fs > 0) {
+            try {
+                const [lbRes, xpRes] = await Promise.all([
+                    fetch('/api/leaderboard', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ score: fs, combo: peakCombo }),
+                    }),
+                    fetch('/api/xp', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ score: fs }),
+                    }),
+                ]);
+                xpData = await xpRes.json();
+                const lbData = await lbRes.json();
+                if (lbData.ok) refreshLeaderboard();
+                if (xpData.ok) updateXpBar(xpData.xp, xpData.xpLevel, xpData.xpForNext);
+            } catch (e) { console.warn('Score submit failed:', e.message); }
+        }
+        showRunSummary('dead', fs, xpData);
+    })();
 }
 
 function completeLevel() {
@@ -2227,12 +2463,33 @@ function completeLevel() {
         localStorage.setItem('neonshift_best', bestScore);
     }
     stopAudio();
-
-    // also submit score on level completion (just in case)
-    submitScore(fs, peakCombo).catch(e => console.warn('Score submit failed:', e.message));
-
-    for (let i = 0; i < 8; i++) spawnParticles(rand(0, canvas.width), rand(0, canvas.height), 18, ['#00ffcc', '#00ffff', '#88ff88', '#ffffff', '#ffff00'], 10);
+    for (let i = 0; i < 8; i++)
+        spawnParticles(rand(0, canvas.width), rand(0, canvas.height), 18,
+            ['#00ffcc', '#00ffff', '#88ff88', '#ffffff', '#ffff00'], 10);
     screenShake = 14;
+
+    (async () => {
+        let xpData = null;
+        if (loggedInUser && fs > 0) {
+            try {
+                const [lbRes, xpRes] = await Promise.all([
+                    fetch('/api/leaderboard', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ score: fs, combo: peakCombo }),
+                    }),
+                    fetch('/api/xp', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ score: fs }),
+                    }),
+                ]);
+                xpData = await xpRes.json();
+                const lbJson = await lbRes.json();
+                if (lbJson.ok) refreshLeaderboard();
+                if (xpData.ok) updateXpBar(xpData.xp, xpData.xpLevel, xpData.xpForNext);
+            } catch (e) { console.warn('Score submit failed:', e.message); }
+        }
+        showRunSummary('complete', fs, xpData);
+    })();
 }
 
 function advanceToNextLevel() {
@@ -2277,6 +2534,9 @@ function startGame() {
     magnet = false; magnetTimer = 0;
     ghost  = false; ghostTimer  = 0;
     doubleScore = false; doubleTimer = 0;
+    runDodgedCount = 0;
+    runStartEpoch  = Date.now();
+    hideRunSummary();
     ['pu-shield','pu-magnet','pu-ghost','pu-double'].forEach(id => document.getElementById(id).classList.remove('active'));
     const ce = document.getElementById('combo-val');
     ce.textContent = 'x1';
@@ -2330,6 +2590,7 @@ window.addEventListener('keydown', e => {
             combo = 0;
             score = 0;
             state = 'title';
+            hideRunSummary();
             document.getElementById('ui').style.display = 'none';
             document.getElementById('powerup-bar').style.display = 'none';
             showLevelSelect();
@@ -2342,14 +2603,8 @@ window.addEventListener('keydown', e => {
             startGame();
             return;
         }
-        if (state === 'dead') {
-            stopAudio();
-            loadAudio(currentLevel && currentLevel.song);
-            startGame();
-            return;
-        }
-        if (state === 'levelcomplete') {
-            advanceToNextLevel();
+        if (state === 'dead' || state === 'levelcomplete') {
+            rsSummaryPrimary();
             return;
         }
         return;
@@ -2419,12 +2674,8 @@ window.addEventListener('touchend', e => {
     const isTap    = Math.abs(dy) < 12 && Math.abs(dx) < 12 && elapsed < 300;
     const isSwipe  = Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 22;
 
-    if (state === 'dead') {
-        stopAudio();
-        loadAudio(currentLevel && currentLevel.song);
-        startGame();
-    } else if (state === 'levelcomplete') {
-        advanceToNextLevel();
+    if (state === 'dead' || state === 'levelcomplete') {
+        rsSummaryPrimary();
     } else if (state === 'playing') {
         if (isSwipe)      movePlayer(dy > 0 ? 1 : -1);
         else if (isTap)   movePlayer(e.changedTouches[0].clientY > canvas.height / 2 ? 1 : -1);
@@ -2435,14 +2686,8 @@ window.addEventListener('touchend', e => {
 
 canvas.addEventListener('click', e => {
     if (state === 'title') return;
-    if (state === 'dead') {
-        stopAudio();
-        loadAudio(currentLevel && currentLevel.song);
-        startGame();
-        return;
-    }
-    if (state === 'levelcomplete') {
-        advanceToNextLevel();
+    if (state === 'dead' || state === 'levelcomplete') {
+        rsSummaryPrimary();
         return;
     }
     movePlayer(e.clientY > canvas.height / 2 ? 1 : -1);
@@ -2548,8 +2793,7 @@ async function startMatchmaking() {
     mmOnlineTimer = setInterval(mmRefreshOnlineCounts, 5000);
 
     mmLog('Searching for a match. This could take a while due to low player count...', 'warn');
-    mmLog('Locating the server in East America to minimize latency. If you are in a different region, it may take longer to find a match.', 'warn');
-    mmLog('Joining matchmaking queue.', 'info');
+    mmLog('Joining matchmaking queue...', 'info');
 
     try {
         const res  = await fetch('/api/matchmaking', {
@@ -2559,7 +2803,7 @@ async function startMatchmaking() {
         const data = await res.json();
 
         if (data.status === 'matched') {
-            mmLog(`Opponent found: ${data.opponent}!`, 'ok');
+            mmLog(`Found opponent: ${data.opponent}`, 'ok');
             await mmOnMatched(data);
         } else if (data.error) {
             mmLog(`Error: ${data.error}`, 'error');
@@ -2585,7 +2829,6 @@ async function mmPoll() {
         if (data.status === 'matched') {
             clearInterval(mmPollTimer);
             mmPollTimer = null;
-            mmLog(`Opponent found: ${data.opponent}!`, 'ok');
             await mmOnMatched(data);
         } else if (data.status === 'expired') {
             clearInterval(mmPollTimer);
@@ -2593,11 +2836,11 @@ async function mmPoll() {
             mmLog('Queue expired. Try again.', 'warn');
             showToast('QUEUE EXPIRED — TRY AGAIN');
             mmReturnToMenu();
+        } else {
         }
     } catch { 
-        mmLog('Connection error while polling — check your network.', 'error');
+        mmLog('Connection error while polling. Still searching...', 'error');
         showToast('⚠ MATCHMAKING ERROR — CHECK CONNECTION');
-        cancelMatchmaking();
      }
 }
 
@@ -3010,13 +3253,13 @@ function mmCountdown() {
     return new Promise(resolve => {
         const el = document.getElementById('mm-countdown');
         let count = 3;
-        el.textContent = "Starting in " + count;
+        el.textContent = count;
 
         const tick = setInterval(() => {
             count--;
             if (count <= 0) {
                 clearInterval(tick);
-                el.textContent = 'Starting Match...';
+                el.textContent = 'GO!';
                 setTimeout(resolve, 600);
             } else {
                 el.textContent = count;
