@@ -2548,7 +2548,8 @@ async function startMatchmaking() {
     mmOnlineTimer = setInterval(mmRefreshOnlineCounts, 5000);
 
     mmLog('Searching for a match. This could take a while due to low player count...', 'warn');
-    mmLog('Joining matchmaking queue...', 'info');
+    mmLog('Locating the server in East America to minimize latency. If you are in a different region, it may take longer to find a match.', 'warn');
+    mmLog('Joining matchmaking queue.', 'info');
 
     try {
         const res  = await fetch('/api/matchmaking', {
