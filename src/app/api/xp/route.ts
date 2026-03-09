@@ -2,7 +2,7 @@
  * Too Many Beats — XP API
  *
  * GET  /api/xp          → { xp: number, xpLevel: number, xpForNext: number }
- * POST /api/xp { score } → awards XP = floor(score / 100), returns updated totals
+ * POST /api/xp { score } → awards XP = floor(score / 10), returns updated totals
  *
  * Run this in Supabase SQL editor once:
  *   ALTER TABLE users ADD COLUMN IF NOT EXISTS xp INTEGER NOT NULL DEFAULT 0;
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   const score = parseInt(body.score, 10) || 0;
   if (score <= 0) return NextResponse.json({ error: 'Invalid score' }, { status: 400 });
 
-  const earned = Math.floor(score / 100);
+  const earned = Math.floor(score / 10);
 
   // Fetch current XP then increment (Supabase doesn't have atomic increment via REST easily)
   const { data: row, error: fetchErr } = await supabase
