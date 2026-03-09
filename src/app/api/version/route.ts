@@ -1,7 +1,7 @@
 /**
  * Too Many Beats — Version API
  *
- * GET /api/version → { version: "Beta 1.030726" }
+ * GET /api/version → { version: "Beta 1.030926" }
  *
  * To push an update alert to all players, just change the version
  * string in /data/game_version.json and redeploy.

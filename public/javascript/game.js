@@ -3009,13 +3009,13 @@ function mmCountdown() {
     return new Promise(resolve => {
         const el = document.getElementById('mm-countdown');
         let count = 3;
-        el.textContent = count;
+        el.textContent = "Starting in " + count;
 
         const tick = setInterval(() => {
             count--;
             if (count <= 0) {
                 clearInterval(tick);
-                el.textContent = 'GO!';
+                el.textContent = 'Starting Match...';
                 setTimeout(resolve, 600);
             } else {
                 el.textContent = count;
