@@ -123,13 +123,12 @@ export async function POST(req: NextRequest) {
 
   // ── poll ─────────────────────────────────────────────────────
   if (action === 'poll') {
-    // 1. Check if a match was already created for me (by the other player)
-    const since = new Date(Date.now() - 60_000).toISOString();
+    // 1. Check if a match already exists for me — no time window, any active match counts
     const { data: matches, error: matchErr } = await supabase
       .from('matches')
       .select('*')
-      .gte('created_at', since)
-      .or(`player1.eq.${me},player2.eq.${me}`)
+      .or(`player1.ilike.${me},player2.ilike.${me}`)   // ilike = case-insensitive
+      .is('winner', null)                               // still active (not finished)
       .order('created_at', { ascending: false })
       .limit(1);
 
@@ -147,22 +146,22 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 2. No match yet — check if I'm still in the queue
+    // 2. No match yet — make sure I'm still in the queue
     const { data: inQueue } = await supabase
       .from('matchmaking_queue')
       .select('username')
-      .eq('username', me)
+      .ilike('username', me)
       .limit(1);
 
     if (!inQueue || inQueue.length === 0) {
-      // Not in queue and no match — something went wrong, re-add to queue
+      // Was removed by a tryPair that then failed to insert the match — re-add
       console.log('[mm] poll: not in queue, re-adding', me);
       await supabase
         .from('matchmaking_queue')
         .upsert({ username: me, created_at: new Date().toISOString() }, { onConflict: 'username' });
     }
 
-    // 3. Try to pair now (handles case where I'm waiting and someone just joined)
+    // 3. Try to pair now
     const match = await tryPair(me);
     if (match) {
       console.log('[mm] poll: paired', me, 'with', match.opponent);

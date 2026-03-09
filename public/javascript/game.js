@@ -1735,7 +1735,7 @@ function gameLoop() {
     // Power-ups
     for (let i = powerups.length - 1; i >= 0; i--) {
         const pu = powerups[i];
-        pu.x -= speed;
+        pu.x -= speed * sf;
         if (Math.hypot(pu.x - (PLAYER_X + PLAYER_W / 2), pu.y - playerY) < 36) {
             activatePowerup(pu.type);
             spawnParticles(pu.x, pu.y, 25, getAccentColors(), 7);
@@ -2296,7 +2296,7 @@ async function startMatchmaking() {
             mmLog(`Error: ${data.error}`, 'error');
         } else {
             mmLog('Added to queue. Waiting for opponent...', 'info');
-            mmPollTimer = setInterval(mmPoll, 1500);
+            mmPollTimer = setInterval(mmPoll, 800);
         }
     } catch (e) {
         mmLog('Connection error — check your network.', 'error');
