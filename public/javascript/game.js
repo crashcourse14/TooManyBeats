@@ -2324,8 +2324,6 @@ async function mmPoll() {
             mmLog('Queue expired. Try again.', 'warn');
             showToast('QUEUE EXPIRED — TRY AGAIN');
             mmReturnToMenu();
-        } else {
-            mmLog('Still searching...', 'info');
         }
     } catch { /* keep polling */ }
 }
