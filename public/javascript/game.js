@@ -1735,7 +1735,7 @@ function gameLoop() {
     // Power-ups
     for (let i = powerups.length - 1; i >= 0; i--) {
         const pu = powerups[i];
-        pu.x -= speed * sf;
+        pu.x -= speed;
         if (Math.hypot(pu.x - (PLAYER_X + PLAYER_W / 2), pu.y - playerY) < 36) {
             activatePowerup(pu.type);
             spawnParticles(pu.x, pu.y, 25, getAccentColors(), 7);
