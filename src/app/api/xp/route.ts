@@ -14,13 +14,13 @@ import { supabase } from '@/lib/db';
 
 const XP_PER_LEVEL = 20_000;
 
-export function calcXpLevel(xp: number) {
+function calcXpLevel(xp: number) {
   return Math.floor(xp / XP_PER_LEVEL) + 1;
 }
 
-export function xpForNextLevel(xp: number) {
-  const level     = Math.floor(xp / XP_PER_LEVEL);
-  return (level + 1) * XP_PER_LEVEL; // total XP needed to reach next level
+function xpForNextLevel(xp: number) {
+  const level = Math.floor(xp / XP_PER_LEVEL);
+  return (level + 1) * XP_PER_LEVEL;
 }
 
 export async function GET() {
