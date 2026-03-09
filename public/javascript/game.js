@@ -1281,7 +1281,10 @@ function getTitleBadgeHTML(entry) {
         cls = 't-top10';
     } else if (titleId.includes('Top 225') || titleId.includes('Top 100')) {
         cls = 't-top225';
-    } else if (titleId.includes('world_record')) {
+    } else if (titleId.includes('Weekly Top 3')) {
+        cls = 't-weekly';
+    }
+    else if (titleId.includes('world_record')) {
         cls = 't-wr';
         label = 'World Record';
     } else if (titleId.includes('season1_pioneer')) {
