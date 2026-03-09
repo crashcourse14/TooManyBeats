@@ -1500,6 +1500,8 @@ function getTitleBadgeHTML(entry) {
     } else if (titleId.includes('world_record')) {
         cls = 't-wr';
         label = 'World Record';
+    } else if (titleId.includes('Weekly Top 3')) {
+        cls = 't-weekly';
     } else if (titleId.includes('season1_pioneer')) {
         cls = 't-new';
         label = 'Season 1 Pioneer';
