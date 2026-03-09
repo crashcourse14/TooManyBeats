@@ -11,14 +11,16 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 // ── Types ──────────────────────────────────────────────────────
 
 export interface User {
-  id?:           number;
-  username:      string;
-  password_hash: string;
-  active_title:  string | null;
-  ship_color:    string | null | undefined;
-  xp:            number;
-  titles:        string[];
-  created_at:    string;
+  id?:            number;
+  username:       string;
+  password_hash:  string;
+  active_title:   string | null;
+  active_banner:  string | null;
+  ship_color:     string | null | undefined;
+  avatar_url:     string | null;
+  xp:             number;
+  titles:         string[];
+  created_at:     string;
 }
 
 export interface LeaderboardEntry {

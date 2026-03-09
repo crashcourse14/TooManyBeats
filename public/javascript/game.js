@@ -74,7 +74,6 @@ let currentLevelIndex = 0;
 // ──────────────────────────────────────────────────────────
 const SCORE_MULTIPLIERS = [
     { level: 'Battle Against a True Hero - Falkkone', multiplier: 2 },
-    { level: 'MEGALOVANIA METAL - RichaadEB & ThunderScott', multiplier: 2.5},
 ];
 
 /**
@@ -1341,6 +1340,9 @@ function renderLeaderboard() {
         const xpLevelHTML  = entry.xpLevel
             ? `<span class="lb-xp-level">LVL ${entry.xpLevel}</span>`
             : '';
+        const avatarHTML   = entry.avatarUrl
+            ? `<img class="lb-avatar" src="${entry.avatarUrl}" alt="" onerror="this.style.display='none'">`
+            : `<span class="lb-avatar-placeholder">👤</span>`;
 
         return `
       <div class="lb-row${rankClass}">
@@ -1348,6 +1350,7 @@ function renderLeaderboard() {
         <div class="lb-rank">${medal}</div>
         <div class="lb-info">
           <div class="lb-name-row">
+            ${avatarHTML}
             <div class="lb-name">${name}</div>
             ${xpLevelHTML}
             ${titleHTML}
@@ -1428,7 +1431,8 @@ async function checkExistingSession() {
             loggedInUser  = data.user;
             loggedInTitle = data.title;
             startPresencePing();
-            loadShipColor(); // load saved color from Supabase
+            loadShipColor();
+            fetchAndCacheMyAvatar();
         }
     } catch (_) {}
     refreshLoginPanel();
@@ -1468,6 +1472,7 @@ async function attemptLogin() {
             loggedInTitle = data.title;
             okEl.textContent = `✓ WELCOME BACK, ${data.user.toUpperCase()}!`;
             document.getElementById('login-password').value = '';
+            fetchAndCacheMyAvatar();
             setTimeout(() => refreshLoginPanel(), 900);
         }
     } catch { errEl.textContent = '⚠ COULD NOT REACH SERVER.'; }
@@ -1524,6 +1529,214 @@ async function logoutUser() {
 }
 
 // ── Title picker ────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────
+//  CARD BANNER SYSTEM
+// ──────────────────────────────────────────────────────────
+
+let playerActiveBanner = localStorage.getItem('tmb_active_banner') || null;
+
+// Track running card banner instances so we can unmount them cleanly
+const cardBannerInstances = { you: null, opp: null };
+
+function mountCardBanner(canvasId, bannerId, instanceKey) {
+    // Unmount previous
+    if (cardBannerInstances[instanceKey]) {
+        try { cardBannerInstances[instanceKey].unmount(); } catch {}
+        cardBannerInstances[instanceKey] = null;
+    }
+    if (!bannerId) return;
+
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !window.CardBanners || !window.CardBanners[bannerId]) return;
+
+    const banner = window.CardBanners[bannerId];
+    // Size canvas to match card
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width  = rect.width  || 240;
+    canvas.height = rect.height || 180;
+
+    banner.mount(canvas);
+    cardBannerInstances[instanceKey] = banner;
+}
+
+function unmountAllCardBanners() {
+    ['you', 'opp'].forEach(k => {
+        if (cardBannerInstances[k]) {
+            try { cardBannerInstances[k].unmount(); } catch {}
+            cardBannerInstances[k] = null;
+        }
+    });
+}
+
+async function loadActiveBanner() {
+    if (!loggedInUser) return;
+    try {
+        const res  = await fetch('/api/banner');
+        const data = await res.json();
+        if (!data.error) {
+            playerActiveBanner = data.banner;
+            localStorage.setItem('tmb_active_banner', data.banner || '');
+        }
+    } catch { /* keep cached */ }
+}
+
+async function saveActiveBanner(bannerId) {
+    playerActiveBanner = bannerId;
+    localStorage.setItem('tmb_active_banner', bannerId || '');
+    try {
+        await fetch('/api/banner', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ banner: bannerId }),
+        });
+    } catch { showToast('⚠ Could not save banner'); }
+}
+
+// Build the banner picker in the profile card
+// Each option shows a live mini canvas preview of the banner
+let pickerBannerInstances = {};
+
+function buildBannerPicker() {
+    const wrap = document.getElementById('banner-picker-wrap');
+    if (!wrap || !window.CardBanners) return;
+
+    // Unmount any previous picker previews
+    Object.values(pickerBannerInstances).forEach(b => { try { b.unmount(); } catch {} });
+    pickerBannerInstances = {};
+
+    wrap.innerHTML = '';
+
+    const banners = Object.values(window.CardBanners);
+
+    // "None" option
+    const noneBtn = document.createElement('button');
+    noneBtn.className = 'banner-pick-btn' + (!playerActiveBanner ? ' active' : '');
+    noneBtn.innerHTML = `<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:18px;color:rgba(255,255,255,0.3);">✕</span><span class="banner-pick-label">NONE</span>`;
+    noneBtn.onclick = () => {
+        playerActiveBanner = null;
+        saveActiveBanner(null);
+        buildBannerPicker();
+    };
+    wrap.appendChild(noneBtn);
+
+    banners.forEach(banner => {
+        const btn = document.createElement('button');
+        btn.className = 'banner-pick-btn' + (playerActiveBanner === banner.id ? ' active' : '');
+
+        const cvs = document.createElement('canvas');
+        cvs.width = 88; cvs.height = 52;
+        btn.appendChild(cvs);
+
+        const labelEl = document.createElement('span');
+        labelEl.className = 'banner-pick-label';
+        labelEl.textContent = banner.label;
+        btn.appendChild(labelEl);
+
+        btn.onclick = () => {
+            playerActiveBanner = banner.id;
+            saveActiveBanner(banner.id);
+            buildBannerPicker(); // re-render to update active state
+        };
+
+        wrap.appendChild(btn);
+
+        // Mount live preview
+        banner.mount(cvs);
+        pickerBannerInstances[banner.id] = banner;
+    });
+}
+
+// Stop picker previews when profile is closed (called from existing close logic)
+// ── Avatar / Profile Picture ─────────────────────────────────
+
+let playerAvatarUrl = localStorage.getItem('tmb_avatar_url') || null;
+
+function loadAvatarIntoProfile() {
+    const img   = document.getElementById('profile-avatar-img');
+    const emoji = document.getElementById('profile-avatar-emoji');
+    const input = document.getElementById('avatar-url-input');
+    const clear = document.getElementById('avatar-url-clear');
+    if (!img) return;
+
+    const url = playerAvatarUrl;
+    if (url) {
+        img.src = url;
+        img.style.display    = '';
+        emoji.style.display  = 'none';
+        input.value          = url;
+        clear.style.display  = '';
+    } else {
+        img.style.display    = 'none';
+        emoji.style.display  = '';
+        input.value          = '';
+        clear.style.display  = 'none';
+    }
+}
+
+async function saveAvatarUrl() {
+    const input   = document.getElementById('avatar-url-input');
+    const errEl   = document.getElementById('avatar-url-error');
+    const url     = input.value.trim();
+
+    errEl.style.display = 'none';
+
+    if (url && !url.startsWith('https://')) {
+        errEl.style.display = 'block';
+        return;
+    }
+
+    // Optimistic update
+    playerAvatarUrl = url || null;
+    localStorage.setItem('tmb_avatar_url', playerAvatarUrl || '');
+    loadAvatarIntoProfile();
+
+    try {
+        const res  = await fetch('/api/avatar', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ avatarUrl: playerAvatarUrl }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            errEl.textContent   = data.error || 'Could not save';
+            errEl.style.display = 'block';
+        } else {
+            showToast('✓ PROFILE PICTURE SAVED');
+        }
+    } catch {
+        showToast('⚠ Could not save profile picture');
+    }
+}
+
+async function clearAvatarUrl() {
+    document.getElementById('avatar-url-input').value = '';
+    playerAvatarUrl = null;
+    localStorage.setItem('tmb_avatar_url', '');
+    loadAvatarIntoProfile();
+    try {
+        await fetch('/api/avatar', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ avatarUrl: null }),
+        });
+        showToast('PROFILE PICTURE REMOVED');
+    } catch {
+        showToast('⚠ Could not clear profile picture');
+    }
+}
+
+async function fetchAndCacheMyAvatar() {
+    if (!loggedInUser) return;
+    try {
+        const res  = await fetch('/api/avatar');
+        const data = await res.json();
+        playerAvatarUrl = data.avatarUrl || null;
+        localStorage.setItem('tmb_avatar_url', playerAvatarUrl || '');
+    } catch { /* keep cached */ }
+}
+
+function stopBannerPickerPreviews() {
+    Object.values(pickerBannerInstances).forEach(b => { try { b.unmount(); } catch {} });
+    pickerBannerInstances = {};
+}
+
 // ── XP helpers ──────────────────────────────────────────────
 const XP_PER_LEVEL = 20_000;
 
@@ -1554,18 +1767,24 @@ async function loadXpBar() {
 }
 
 async function loadTitlePicker() {
-    const wrap = document.getElementById('profile-titles-wrap');
+    const wrap     = document.getElementById('profile-titles-wrap');
     const activeEl = document.getElementById('profile-active-title');
     if (!wrap) return;
     wrap.innerHTML = '<div style="font-size:10px;opacity:.35;letter-spacing:1px">LOADING…</div>';
 
+    // Always run these regardless of title state
+    await loadShipColor();
+    buildShipColorPicker();
+    loadXpBar();
+    await loadActiveBanner();
+    buildBannerPicker();
+    loadAvatarIntoProfile();
+
     try {
-        // Fetch user data including titles
-        const res = await fetch('/api/auth?action=me');
+        const res  = await fetch('/api/auth?action=me');
         const data = await res.json();
         if (!data.user) throw new Error('Not logged in');
 
-        // Update active title display
         activeEl.textContent = data.title || 'None';
 
         const available = JSON.parse(data.titles || '[]');
@@ -1587,7 +1806,8 @@ async function loadTitlePicker() {
             padding: 8px 12px;
             margin-top: 8px;
         `;
-        select.innerHTML = '<option value="">✕ Clear</option>' + available.map(t => `<option value="${t}"${t === data.title ? ' selected' : ''}>${t}</option>`).join('');
+        select.innerHTML = '<option value="">✕ Clear</option>' +
+            available.map(t => `<option value="${t}"${t === data.title ? ' selected' : ''}>${t}</option>`).join('');
         select.addEventListener('change', () => pickTitle(select.value));
         wrap.innerHTML = '';
         wrap.appendChild(select);
@@ -1595,11 +1815,6 @@ async function loadTitlePicker() {
     } catch (e) {
         wrap.innerHTML = `<div style="font-size:10px;color:#ff4466">Failed to load titles.</div>`;
     }
-
-    // Build ship color picker every time profile opens
-    await loadShipColor();
-    buildShipColorPicker();
-    loadXpBar();
 }
 
 async function pickTitle(titleId) {
@@ -1642,6 +1857,7 @@ function refreshLoginPanel() {
         document.getElementById('login-card').style.display    = 'flex';
         document.getElementById('register-card').style.display = 'none';
         document.getElementById('profile-card').style.display  = 'none';
+        stopBannerPickerPreviews();
     }
 }
 
@@ -2373,10 +2589,12 @@ async function mmPoll() {
             mmLog('Queue expired. Try again.', 'warn');
             showToast('QUEUE EXPIRED — TRY AGAIN');
             mmReturnToMenu();
-        } 
+        }
     } catch { 
-        mmLog('Connection error while polling. Still searching...', 'error');
-    }
+        mmLog('Connection error while polling — check your network.', 'error');
+        showToast('⚠ MATCHMAKING ERROR — CHECK CONNECTION');
+        cancelMatchmaking();
+     }
 }
 
 async function cancelMatchmaking() {
@@ -2411,6 +2629,289 @@ function mmPlayBeep(freq = 880, duration = 0.12, vol = 0.35) {
 }
 
 // ── Match found — show search-screen countdown then load pre-game ─
+// ──────────────────────────────────────────────────────────
+//  MATCH BANNER  — animated themed background for pregame
+// ──────────────────────────────────────────────────────────
+
+let bannerAnimId  = null;
+let bannerParticles = [];
+
+// Map laneTheme → banner theme name
+function getBannerTheme(laneTheme) {
+    const map = { fire: 'fire', ice: 'ice', void: 'void', cosmic: 'cosmic' };
+    return map[laneTheme] || 'neon';
+}
+
+function startBannerAnimation(laneTheme) {
+    stopBannerAnimation();
+    const theme  = getBannerTheme(laneTheme);
+    const pg     = document.getElementById('mm-pregame');
+    const canvas = document.getElementById('mm-banner-canvas');
+    if (!canvas) return;
+
+    // Set theme class on pregame for CSS tinting
+    pg.className = pg.className.replace(/theme-\w+/g, '').trim();
+    pg.classList.add('mm-screen', `theme-${theme}`);
+
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const ctx = canvas.getContext('2d');
+
+    bannerParticles = [];
+
+    const themes = {
+
+        // ── NEON / LIGHTNING ─────────────────────────────────
+        neon: {
+            spawn() {
+                if (Math.random() < 0.08) {
+                    // lightning bolt
+                    bannerParticles.push({
+                        type: 'bolt',
+                        x: Math.random() * canvas.width,
+                        y: 0,
+                        segments: [],
+                        life: 1, decay: 0.06 + Math.random() * 0.04,
+                        color: Math.random() < 0.5 ? '#00ffff' : '#ffffff',
+                    });
+                }
+                // floating sparks
+                bannerParticles.push({
+                    type: 'spark',
+                    x: Math.random() * canvas.width,
+                    y: canvas.height + 5,
+                    vx: (Math.random() - 0.5) * 1.5,
+                    vy: -(1 + Math.random() * 2.5),
+                    life: 1, decay: 0.008 + Math.random() * 0.008,
+                    size: 1 + Math.random() * 2,
+                    color: `hsl(${180 + Math.random()*40},100%,${60+Math.random()*30}%)`,
+                });
+            },
+            draw(p) {
+                if (p.type === 'bolt') {
+                    // Generate jagged bolt downward
+                    if (!p.segments.length) {
+                        let cx = p.x, cy = 0;
+                        while (cy < canvas.height) {
+                            const nx = cx + (Math.random() - 0.5) * 120;
+                            const ny = cy + 30 + Math.random() * 60;
+                            p.segments.push([cx, cy, nx, ny]);
+                            cx = nx; cy = ny;
+                        }
+                    }
+                    ctx.save();
+                    ctx.globalAlpha = p.life * 0.85;
+                    ctx.shadowBlur = 18; ctx.shadowColor = p.color;
+                    ctx.strokeStyle = p.color; ctx.lineWidth = p.life * 2.5;
+                    ctx.beginPath();
+                    p.segments.forEach(([x1,y1,x2,y2], i) => {
+                        if (i === 0) ctx.moveTo(x1,y1); ctx.lineTo(x2,y2);
+                    });
+                    ctx.stroke();
+                    ctx.restore();
+                } else {
+                    p.x += p.vx; p.y += p.vy;
+                    ctx.save();
+                    ctx.globalAlpha = p.life;
+                    ctx.shadowBlur = 10; ctx.shadowColor = p.color;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            },
+            bg() {
+                ctx.fillStyle = 'rgba(0,0,8,0.35)';
+                ctx.fillRect(0,0,canvas.width,canvas.height);
+            },
+        },
+
+        // ── FIRE ─────────────────────────────────────────────
+        fire: {
+            spawn() {
+                bannerParticles.push({
+                    x: Math.random() * canvas.width,
+                    y: canvas.height + 10,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: -(2 + Math.random() * 4),
+                    size: 8 + Math.random() * 18,
+                    life: 1, decay: 0.012 + Math.random() * 0.01,
+                    hue: Math.random() * 40,    // 0=red, 40=orange
+                });
+            },
+            draw(p) {
+                p.x += p.vx + Math.sin(p.y * 0.03) * 0.6;
+                p.y += p.vy;
+                p.size *= 0.985;
+                const lightness = 40 + (1-p.life) * 30;
+                const color = `hsl(${p.hue},100%,${lightness}%)`;
+                ctx.save();
+                ctx.globalAlpha = p.life * 0.7;
+                ctx.shadowBlur = 20; ctx.shadowColor = color;
+                const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+                g.addColorStop(0, `hsl(${p.hue+20},100%,90%)`);
+                g.addColorStop(0.4, color);
+                g.addColorStop(1, 'transparent');
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            },
+            bg() {
+                ctx.fillStyle = 'rgba(8,2,0,0.4)';
+                ctx.fillRect(0,0,canvas.width,canvas.height);
+            },
+        },
+
+        // ── ICE ───────────────────────────────────────────────
+        ice: {
+            spawn() {
+                bannerParticles.push({
+                    x: Math.random() * canvas.width,
+                    y: -10,
+                    vx: (Math.random() - 0.5) * 1.2,
+                    vy: 0.8 + Math.random() * 2,
+                    size: 2 + Math.random() * 5,
+                    spin: (Math.random()-0.5)*0.1,
+                    angle: Math.random() * Math.PI*2,
+                    life: 1, decay: 0.005 + Math.random() * 0.007,
+                    hue: 190 + Math.random()*30,
+                });
+            },
+            draw(p) {
+                p.x += p.vx; p.y += p.vy; p.angle += p.spin;
+                const color = `hsl(${p.hue},80%,${75+Math.random()*15}%)`;
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.angle);
+                ctx.globalAlpha = p.life * 0.8;
+                ctx.shadowBlur = 12; ctx.shadowColor = color;
+                ctx.strokeStyle = color; ctx.lineWidth = 1.2;
+                // snowflake — 6 arms
+                for (let a = 0; a < 6; a++) {
+                    ctx.rotate(Math.PI/3);
+                    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0, p.size * 4);
+                    ctx.stroke();
+                    // crossbars
+                    ctx.beginPath(); ctx.moveTo(-p.size, p.size*1.5); ctx.lineTo(p.size, p.size*1.5);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            },
+            bg() {
+                ctx.fillStyle = 'rgba(0,4,12,0.35)';
+                ctx.fillRect(0,0,canvas.width,canvas.height);
+            },
+        },
+
+        // ── VOID ─────────────────────────────────────────────
+        void: {
+            spawn() {
+                bannerParticles.push({
+                    x: canvas.width/2 + (Math.random()-0.5)*canvas.width*0.8,
+                    y: canvas.height/2 + (Math.random()-0.5)*canvas.height*0.8,
+                    angle: Math.random()*Math.PI*2,
+                    speed: 0.4 + Math.random()*1.2,
+                    life: 1, decay: 0.004 + Math.random()*0.006,
+                    size: 1 + Math.random()*3,
+                    hue: 260 + Math.random()*60,
+                });
+            },
+            draw(p) {
+                // spiral inward toward center
+                const cx = canvas.width/2, cy = canvas.height/2;
+                const dx = cx - p.x, dy = cy - p.y;
+                const dist = Math.hypot(dx, dy);
+                p.x += (dx/dist)*p.speed + Math.cos(p.angle)*0.5;
+                p.y += (dy/dist)*p.speed + Math.sin(p.angle)*0.5;
+                p.angle += 0.04;
+                const color = `hsl(${p.hue},100%,60%)`;
+                ctx.save();
+                ctx.globalAlpha = p.life * 0.75;
+                ctx.shadowBlur = 14; ctx.shadowColor = color;
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            },
+            bg() {
+                // pulsing vortex at center
+                ctx.fillStyle = 'rgba(2,0,8,0.45)';
+                ctx.fillRect(0,0,canvas.width,canvas.height);
+                const pulse = 0.04 + Math.abs(Math.sin(Date.now()*0.001))*0.06;
+                const g = ctx.createRadialGradient(canvas.width/2,canvas.height/2,0,canvas.width/2,canvas.height/2,canvas.width*0.4);
+                g.addColorStop(0, `rgba(120,0,255,${pulse})`);
+                g.addColorStop(1, 'transparent');
+                ctx.fillStyle = g;
+                ctx.fillRect(0,0,canvas.width,canvas.height);
+            },
+        },
+
+        // ── COSMIC ───────────────────────────────────────────
+        cosmic: {
+            spawn() {
+                bannerParticles.push({
+                    x: Math.random()*canvas.width,
+                    y: Math.random()*canvas.height,
+                    vx: (Math.random()-0.5)*0.5,
+                    vy: (Math.random()-0.5)*0.5,
+                    life: 1, decay: 0.003+Math.random()*0.005,
+                    size: 1+Math.random()*4,
+                    hue: Math.random()*360, hueShift: 1+Math.random()*2,
+                });
+            },
+            draw(p) {
+                p.x += p.vx; p.y += p.vy; p.hue = (p.hue + p.hueShift) % 360;
+                const color = `hsl(${p.hue},100%,65%)`;
+                ctx.save();
+                ctx.globalAlpha = p.life * 0.7;
+                ctx.shadowBlur = 16; ctx.shadowColor = color;
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+                ctx.fill();
+                ctx.restore();
+            },
+            bg() {
+                ctx.fillStyle = 'rgba(4,0,10,0.3)';
+                ctx.fillRect(0,0,canvas.width,canvas.height);
+            },
+        },
+    };
+
+    const t = themes[theme] || themes.neon;
+
+    function tick() {
+        t.bg();
+        // spawn
+        for (let i = 0; i < 3; i++) t.spawn();
+
+        // update + draw + cull
+        for (let i = bannerParticles.length-1; i >= 0; i--) {
+            const p = bannerParticles[i];
+            t.draw(p);
+            p.life -= p.decay;
+            if (p.life <= 0) bannerParticles.splice(i,1);
+        }
+        bannerAnimId = requestAnimationFrame(tick);
+    }
+    tick();
+}
+
+function stopBannerAnimation() {
+    if (bannerAnimId) { cancelAnimationFrame(bannerAnimId); bannerAnimId = null; }
+    bannerParticles = [];
+    const canvas = document.getElementById('mm-banner-canvas');
+    if (canvas) canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+    const pg = document.getElementById('mm-pregame');
+    if (pg) pg.className = pg.className.replace(/theme-\w+/g,'').trim();
+}
+
+// ──────────────────────────────────────────────────────────
+
 async function mmOnMatched(data) {
     mmMatchId    = data.matchId;
     mmOpponent   = data.opponent;
@@ -2433,6 +2934,10 @@ async function mmOnMatched(data) {
     // Now switch to pre-game cards
     mmShowScreen('mm-pregame');
 
+    // Start themed banner animation based on this level's laneTheme
+    const lvl = levels[mmLevelIndex];
+    startBannerAnimation(lvl ? lvl.laneTheme : 'neon');
+
     // Load player info for both sides in parallel
     const [myInfo, oppInfo] = await Promise.all([
         mmFetchPlayerInfo(loggedInUser),
@@ -2441,14 +2946,17 @@ async function mmOnMatched(data) {
 
     // Populate YOU card
     document.getElementById('mm-you-name').textContent = loggedInUser.toUpperCase();
-    mmPopulateCard('mm-you-title', 'mm-you-stats', myInfo);
+    mmPopulateCard('mm-you-title', 'mm-you-stats', myInfo, 'mm-card-avatar-you');
 
     // Populate OPPONENT card
     document.getElementById('mm-opp-name-pre').textContent = mmOpponent.toUpperCase();
-    mmPopulateCard('mm-opp-title', 'mm-opp-stats', oppInfo);
+    mmPopulateCard('mm-opp-title', 'mm-opp-stats', oppInfo, 'mm-card-avatar-opp');
+
+    // Mount card banners (yours from cache, opponent's from playerInfo)
+    mountCardBanner('mm-banner-you', playerActiveBanner, 'you');
+    mountCardBanner('mm-banner-opp', oppInfo.activeBanner || null, 'opp');
 
     // Show level name
-    const lvl = levels[mmLevelIndex];
     const levelDisplayName = lvl ? lvl.name : `Level ${mmLevelIndex + 1}`;
     document.getElementById('mm-level-name').textContent = `LEVEL: ${levelDisplayName}`;
 
@@ -2468,13 +2976,22 @@ async function mmFetchPlayerInfo(username) {
     } catch { return {}; }
 }
 
-function mmPopulateCard(titleElId, statsElId, info) {
-    const titleEl = document.getElementById(titleElId);
-    const statsEl = document.getElementById(statsElId);
+function mmPopulateCard(titleElId, statsElId, info, avatarElId) {
+    const titleEl  = document.getElementById(titleElId);
+    const statsEl  = document.getElementById(statsElId);
+    const avatarEl = avatarElId ? document.getElementById(avatarElId) : null;
+
+    if (avatarEl) {
+        if (info.avatarUrl) {
+            avatarEl.innerHTML = `<img src="${info.avatarUrl}" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.2)" onerror="this.parentElement.textContent='👾'">`;
+        } else {
+            avatarEl.textContent = '👾';
+        }
+    }
 
     if (info.titleLabel) {
-        titleEl.textContent  = info.titleLabel;
-        titleEl.className    = `mm-card-title ${info.titleClass || ''}`;
+        titleEl.textContent   = info.titleLabel;
+        titleEl.className     = `mm-card-title ${info.titleClass || ''}`;
         titleEl.style.display = '';
     } else {
         titleEl.style.display = 'none';
@@ -2506,6 +3023,8 @@ function mmCountdown() {
 
 // ── Start the match game ───────────────────────────────────
 function mmStartMatchGame() {
+    stopBannerAnimation();
+    unmountAllCardBanners();
     mmHideAll();
     mmInMatch = true;
     mmMyFinalScore  = 0;
@@ -2633,6 +3152,8 @@ function mmShowResults(winner) {
 }
 
 function mmReturnToMenu() {
+    stopBannerAnimation();
+    unmountAllCardBanners();
     mmHideAll();
     mmInMatch     = false;
     mmMatchId     = null;

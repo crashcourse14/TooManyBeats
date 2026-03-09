@@ -83,11 +83,13 @@ export async function POST(req: NextRequest) {
       const titleClass = titleDef?.class ?? null;
 
       return NextResponse.json({
-        username:   targetUser,
+        username:     targetUser,
         bestScore,
         rank,
         titleLabel,
         titleClass,
+        activeBanner: userRecord?.active_banner ?? null,
+        avatarUrl:    userRecord?.avatar_url    ?? null,
       });
     } catch (e: any) {
       return NextResponse.json({ error: e.message }, { status: 500 });

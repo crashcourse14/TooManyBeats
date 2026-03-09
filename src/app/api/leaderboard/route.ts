@@ -31,8 +31,9 @@ export async function GET() {
     const xpLevel  = Math.floor(xp / XP_PER_LEVEL) + 1;
     return {
       ...e,
-      title:    u?.active_title ?? null,
+      title:     u?.active_title ?? null,
       xpLevel,
+      avatarUrl: u?.avatar_url ?? null,
     };
   });
 
@@ -43,6 +44,7 @@ export async function GET() {
 
 // ── POST /api/leaderboard ──────────────────────────────────────
 export async function POST(req: NextRequest) {
+
 
   const session = await getSession();
   if (!session.user) {

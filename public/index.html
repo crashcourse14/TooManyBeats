@@ -651,6 +651,68 @@
   }
   #profile-logout-btn:hover { color: #ff6666; border-color: rgba(255,80,80,0.5); }
 
+  /* ── Profile Picture ── */
+  #profile-avatar-wrap {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    margin-bottom: 4px;
+  }
+  #profile-avatar-img {
+    width: 64px; height: 64px; border-radius: 50%;
+    border: 2px solid rgba(0,255,255,0.35);
+    box-shadow: 0 0 16px rgba(0,255,255,0.2);
+    object-fit: cover; display: none;
+  }
+  #profile-avatar-emoji {
+    font-size: 42px; line-height: 1;
+    filter: drop-shadow(0 0 8px rgba(255,255,255,0.2));
+  }
+  #avatar-url-row {
+    display: flex; gap: 6px; width: 100%; align-items: center;
+  }
+  #avatar-url-input {
+    flex: 1; background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12); border-radius: 6px;
+    color: white; font-family: 'Share Tech Mono', monospace;
+    font-size: 9px; letter-spacing: 1px; padding: 7px 10px;
+    outline: none; transition: border-color 0.15s;
+  }
+  #avatar-url-input::placeholder { color: rgba(255,255,255,0.2); }
+  #avatar-url-input:focus { border-color: rgba(0,255,255,0.4); }
+  #avatar-url-save {
+    font-family: 'Share Tech Mono', monospace; font-size: 9px;
+    letter-spacing: 1px; padding: 7px 12px; border-radius: 6px;
+    background: rgba(0,255,255,0.1); border: 1px solid rgba(0,255,255,0.3);
+    color: #00ffff; cursor: pointer; white-space: nowrap;
+    transition: background 0.15s;
+  }
+  #avatar-url-save:hover { background: rgba(0,255,255,0.2); }
+  #avatar-url-error {
+    font-family: 'Share Tech Mono', monospace; font-size: 9px;
+    letter-spacing: 1px; color: #ff4466; display: none; text-align: center;
+  }
+  #avatar-url-clear {
+    font-family: 'Share Tech Mono', monospace; font-size: 9px;
+    letter-spacing: 1px; padding: 5px 10px; border-radius: 6px;
+    background: none; border: 1px solid rgba(255,80,80,0.25);
+    color: rgba(255,80,80,0.5); cursor: pointer; transition: all 0.15s;
+    display: none;
+  }
+  #avatar-url-clear:hover { color: #ff6666; border-color: rgba(255,80,80,0.5); }
+
+  /* ── Leaderboard avatar ── */
+  .lb-avatar {
+    width: 26px; height: 26px; border-radius: 50%;
+    object-fit: cover; flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.15);
+    vertical-align: middle;
+  }
+  .lb-avatar-placeholder {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
   /* ── XP Progress Bar ── */
   #xp-bar-wrap {
     display: flex; flex-direction: column; gap: 6px; margin-bottom: 24px;
@@ -727,6 +789,23 @@
   /* Only pregame and results need a dark backdrop */
   #mm-pregame, #mm-results {
     background: rgba(0,0,0,0.93);
+  }
+
+  /* Full-screen background canvas — must stay BEHIND all content */
+  #mm-banner-canvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Everything inside pregame sits above the background canvas */
+  #mm-pregame-title,
+  #mm-pregame-cards,
+  #mm-level-name,
+  #mm-countdown {
+    position: relative;
+    z-index: 1;
   }
 
   /* ── Searching screen ── */
@@ -815,69 +894,147 @@
     gap: 0;
   }
   #mm-pregame-title {
-    font-family: 'Orbitron', monospace; font-size: clamp(13px,1.8vw,20px);
-    font-weight: 700; letter-spacing: 5px; color: rgba(255,255,255,0.4);
-    margin-bottom: 28px; text-transform: uppercase;
+    font-family: 'Orbitron', monospace; font-size: clamp(11px,1.4vw,16px);
+    font-weight: 700; letter-spacing: 6px; color: rgba(255,255,255,0.35);
+    margin-bottom: 36px; text-transform: uppercase;
   }
   #mm-pregame-cards {
-    display: flex; align-items: center; gap: clamp(16px,4vw,60px);
-    margin-bottom: 32px;
+    display: flex; align-items: center; gap: clamp(28px,6vw,80px);
+    margin-bottom: 28px;
   }
+
+  /* Card itself — compact rectangle matching screenshot */
   .mm-player-card {
-    background: rgba(255,255,255,0.04);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 16px; padding: 28px 32px;
-    width: clamp(160px,22vw,240px);
-    display: flex; flex-direction: column; align-items: center; gap: 10px;
-    position: relative;
+    background: rgba(10,10,20,0.85);
+    border-radius: 12px; padding: 22px 28px 20px;
+    width: clamp(180px,20vw,230px);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    position: relative; overflow: hidden;
   }
-  .mm-player-card.you  { border-color: rgba(0,255,255,0.3); box-shadow: 0 0 30px rgba(0,255,255,0.08); }
-  .mm-player-card.opp  { border-color: rgba(255,80,120,0.3); box-shadow: 0 0 30px rgba(255,80,120,0.08); }
+  .mm-player-card.you {
+    border: 1px solid rgba(0,220,220,0.45);
+    box-shadow: 0 0 0 1px rgba(0,220,220,0.08), inset 0 0 40px rgba(0,220,220,0.04);
+  }
+  .mm-player-card.opp {
+    border: 1px solid rgba(220,60,100,0.45);
+    box-shadow: 0 0 0 1px rgba(220,60,100,0.08), inset 0 0 40px rgba(220,60,100,0.04);
+  }
+
+  /* Banner canvas fills the card behind all content */
+  .mm-card-banner-canvas {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    border-radius: 12px;
+    pointer-events: none;
+  }
+
+  /* Ensure card text content sits above the banner canvas */
+  .mm-card-label, .mm-card-avatar, .mm-card-username,
+  .mm-card-title, .mm-card-stat { position: relative; z-index: 1; }
+
+  /* YOU / OPPONENT pill label sitting on top edge */
   .mm-card-label {
-    position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
-    font-family: 'Share Tech Mono', monospace; font-size: 9px; letter-spacing: 3px;
-    padding: 3px 14px; border-radius: 20px; white-space: nowrap;
+    position: absolute; top: -11px; left: 50%; transform: translateX(-50%);
+    font-family: 'Share Tech Mono', monospace; font-size: 8px; letter-spacing: 3px;
+    padding: 2px 12px; border-radius: 20px; white-space: nowrap;
   }
-  .mm-player-card.you .mm-card-label  { background: rgba(0,255,255,0.15); color: #00ffff; border: 1px solid rgba(0,255,255,0.3); }
-  .mm-player-card.opp .mm-card-label  { background: rgba(255,80,120,0.12); color: #ff5080; border: 1px solid rgba(255,80,120,0.3); }
-  .mm-card-avatar { font-size: 36px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.2)); }
+  .mm-player-card.you .mm-card-label {
+    background: rgba(0,200,210,0.18); color: #00e5e5;
+    border: 1px solid rgba(0,200,210,0.4);
+  }
+  .mm-player-card.opp .mm-card-label {
+    background: rgba(210,55,90,0.15); color: #e05070;
+    border: 1px solid rgba(210,55,90,0.4);
+  }
+
+  /* Avatar — small pixel-art size matching screenshot */
+  .mm-card-avatar {
+    font-size: 32px;
+    filter: drop-shadow(0 0 6px rgba(150,100,255,0.5));
+    line-height: 1; margin-top: 4px;
+  }
+  .mm-card-avatar img {
+    width: 44px; height: 44px; border-radius: 50%;
+    object-fit: cover; border: 2px solid rgba(255,255,255,0.15);
+    display: block;
+  }
+
+  /* Username — bold, tight */
   .mm-card-username {
-    font-family: 'Orbitron', monospace; font-size: clamp(11px,1.4vw,15px);
-    font-weight: 900; letter-spacing: 2px; color: white; text-align: center;
+    font-family: 'Orbitron', monospace; font-size: clamp(10px,1.3vw,13px);
+    font-weight: 900; letter-spacing: 1.5px; color: white;
+    text-align: center; margin-top: 2px;
   }
+
   .mm-card-title {
     font-family: 'Share Tech Mono', monospace; font-size: 9px;
-    letter-spacing: 1.5px; padding: 3px 10px; border-radius: 4px;
+    letter-spacing: 1.5px; padding: 2px 8px; border-radius: 4px;
     border: 1px solid; text-align: center;
   }
+
+  /* Stats — small muted mono */
   .mm-card-stat {
-    font-family: 'Share Tech Mono', monospace; font-size: 10px;
-    letter-spacing: 1px; color: rgba(255,255,255,0.4); text-align: center;
-    line-height: 1.8;
+    font-family: 'Share Tech Mono', monospace; font-size: 9px;
+    letter-spacing: 1px; color: rgba(255,255,255,0.35);
+    text-align: center; line-height: 1.9; margin-top: 2px;
   }
-  .mm-card-stat strong { color: white; }
+  .mm-card-stat strong { color: rgba(255,255,255,0.9); }
 
+  /* VS text */
   .mm-vs {
-    font-family: 'Orbitron', monospace; font-size: clamp(22px,4vw,42px);
+    font-family: 'Orbitron', monospace; font-size: clamp(26px,5vw,52px);
     font-weight: 900; color: white; letter-spacing: 4px;
-    text-shadow: 0 0 30px rgba(255,255,255,0.3);
+    text-shadow: 0 0 24px rgba(255,255,255,0.25);
   }
 
+  /* Level name — small, centred, muted */
   #mm-level-name {
-    font-family: 'Share Tech Mono', monospace; font-size: 11px;
-    letter-spacing: 3px; color: rgba(255,255,255,0.3); margin-bottom: 8px;
+    font-family: 'Share Tech Mono', monospace; font-size: 10px;
+    letter-spacing: 2px; color: rgba(255,255,255,0.25);
+    margin-bottom: 10px; text-align: center;
   }
+
+  /* Countdown number */
   #mm-countdown {
-    font-family: 'Orbitron', monospace; font-size: clamp(48px,10vw,100px);
+    font-family: 'Orbitron', monospace; font-size: clamp(52px,11vw,110px);
     font-weight: 900; color: #00ffff;
-    text-shadow: 0 0 40px rgba(0,255,255,0.6), 0 0 80px rgba(0,255,255,0.3);
+    text-shadow: 0 0 40px rgba(0,255,255,0.6), 0 0 80px rgba(0,255,255,0.25);
     animation: mm-pulse 1s ease-in-out infinite;
-    min-height: 120px; display: flex; align-items: center;
+    min-height: 110px; display: flex; align-items: center;
   }
   @keyframes mm-pulse {
     0%,100% { transform: scale(1);    opacity: 1;   }
     50%      { transform: scale(1.08); opacity: 0.8; }
   }
+
+  /* ── Banner picker in profile card ── */
+  #banner-picker-wrap {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    margin-bottom: 8px;
+  }
+  .banner-pick-btn {
+    position: relative; width: 88px; height: 52px;
+    border-radius: 8px; overflow: hidden; cursor: pointer;
+    border: 2px solid rgba(255,255,255,0.1);
+    transition: border-color 0.15s, transform 0.1s;
+    background: #000;
+  }
+  .banner-pick-btn canvas {
+    position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
+  }
+  .banner-pick-btn .banner-pick-label {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    font-family: 'Share Tech Mono', monospace; font-size: 8px;
+    letter-spacing: 1px; text-align: center; padding: 3px 2px;
+    background: rgba(0,0,0,0.65); color: rgba(255,255,255,0.75);
+    pointer-events: none;
+  }
+  .banner-pick-btn.active {
+    border-color: #00ffff;
+    box-shadow: 0 0 12px rgba(0,255,255,0.4);
+    transform: scale(1.04);
+  }
+  .banner-pick-btn:hover:not(.active) { border-color: rgba(255,255,255,0.35); }
 
   /* ── In-match opponent HUD ── */
   #mm-opponent-hud {
@@ -1115,7 +1272,7 @@
 
   <div id="menu-buttons">
     <button class="menu-btn" onclick="startMatchmaking()">⚔️ &nbsp;MATCH MAKE</button>
-    <button class="menu-btn" onclick="goToScreen('levels')">▤ &nbsp;PRACTICE</button>
+    <button class="menu-btn" onclick="goToScreen('levels')">▤ &nbsp;LEVELS</button>
     <button class="menu-btn" onclick="goToScreen('leaderboard')">🏆 &nbsp;LEADERBOARD</button>
     <button class="menu-btn" onclick="goToScreen('links')">🔗 &nbsp;LINKS</button>
     <button class="menu-btn" id="menu-btn-login" onclick="goToScreen('login')">⚡ &nbsp;LOGIN</button>
@@ -1127,7 +1284,7 @@
 
 <!-- Top nav bar (hidden — kept for JS compatibility) -->
 <div id="top-nav" style="display:none">
-  <button class="nav-btn active-tab" id="nav-btn-levels"      onclick="showTitleScreen('levels')">▤ PRACTICE</button>
+  <button class="nav-btn active-tab" id="nav-btn-levels"      onclick="showTitleScreen('levels')">▤ LEVELS</button>
   <button class="nav-btn"            id="nav-btn-leaderboard" onclick="showTitleScreen('leaderboard')">🏆 LEADERBOARD</button>
   <button class="nav-btn"            id="nav-btn-links"       onclick="showTitleScreen('links')">🔗 LINKS</button>
   <button class="nav-btn"            id="nav-btn-login"       onclick="showTitleScreen('login')">⚡ LOGIN</button>
@@ -1215,12 +1372,23 @@
   <!-- ── PROFILE CARD (shown when logged in) ── -->
   <div id="profile-card" style="display:none">
     <div id="profile-name-row">
-      <div id="profile-avatar">👤</div>
+      <div id="profile-avatar-wrap">
+        <span id="profile-avatar-emoji">👤</span>
+        <img id="profile-avatar-img" src="" alt="avatar" onerror="this.style.display='none';document.getElementById('profile-avatar-emoji').style.display=''">
+      </div>
       <div>
         <div id="profile-username"></div>
         <div id="profile-user-sub">PLAYER PROFILE</div>
       </div>
     </div>
+
+    <div class="profile-section-label">PROFILE PICTURE</div>
+    <div id="avatar-url-row">
+      <input id="avatar-url-input" type="url" placeholder="https://example.com/pic.png" autocomplete="off">
+      <button id="avatar-url-save" onclick="saveAvatarUrl()">SAVE</button>
+      <button id="avatar-url-clear" onclick="clearAvatarUrl()">✕</button>
+    </div>
+    <div id="avatar-url-error">Must be a valid HTTPS image URL</div>
 
     <div class="profile-section-label">LEVEL PROGRESS</div>
     <div id="xp-bar-wrap">
@@ -1245,6 +1413,9 @@
       <canvas id="ship-preview-canvas" width="120" height="48"></canvas>
     </div>
     <div id="ship-colors-wrap"></div>
+
+    <div class="profile-section-label">CARD BANNER</div>
+    <div id="banner-picker-wrap"></div>
 
     <div class="profile-section-label">ACCOUNT</div>
     <button id="profile-logout-btn" onclick="logoutUser()">LOG OUT</button>
@@ -1283,12 +1454,16 @@
 
 <!-- 2. Pre-game player cards + countdown -->
 <div id="mm-pregame" class="mm-screen">
+  <!-- Animated theme background canvas -->
+  <canvas id="mm-banner-canvas"></canvas>
+
   <div id="mm-pregame-title">MATCH FOUND</div>
   <div id="mm-pregame-cards">
     <!-- You -->
     <div class="mm-player-card you" id="mm-card-you">
+      <canvas class="mm-card-banner-canvas" id="mm-banner-you"></canvas>
       <div class="mm-card-label">YOU</div>
-      <div class="mm-card-avatar">👾</div>
+      <div class="mm-card-avatar" id="mm-card-avatar-you">👾</div>
       <div class="mm-card-username" id="mm-you-name">—</div>
       <div class="mm-card-title"   id="mm-you-title" style="display:none"></div>
       <div class="mm-card-stat"    id="mm-you-stats"></div>
@@ -1298,8 +1473,9 @@
 
     <!-- Opponent -->
     <div class="mm-player-card opp" id="mm-card-opp">
+      <canvas class="mm-card-banner-canvas" id="mm-banner-opp"></canvas>
       <div class="mm-card-label">OPPONENT</div>
-      <div class="mm-card-avatar">👾</div>
+      <div class="mm-card-avatar" id="mm-card-avatar-opp">👾</div>
       <div class="mm-card-username" id="mm-opp-name-pre">—</div>
       <div class="mm-card-title"    id="mm-opp-title" style="display:none"></div>
       <div class="mm-card-stat"     id="mm-opp-stats"></div>
@@ -1353,7 +1529,6 @@
   <button id="mm-result-back" onclick="mmReturnToMenu()">BACK TO MENU</button>
 </div>
 
-<script src="/javascript/logger.js"></script>
 <script src="/javascript/game.js"></script>
 <script>
   const targetURL = "https://too-many-beat.vercel.app";
@@ -1364,5 +1539,12 @@
   }
 
 </script>
+  <!-- Banner animations -->
+  <script src="/banners/lightning.js"></script>
+  <script src="/banners/fire.js"></script>
+  <script src="/banners/ice.js"></script>
+  <script src="/banners/void.js"></script>
+  <script src="/banners/cosmic.js"></script>
+  <script src="/banners/neoncity.js"></script>
 </body>
 </html>

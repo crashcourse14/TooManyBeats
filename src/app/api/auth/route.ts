@@ -91,6 +91,8 @@ export async function POST(req: NextRequest) {
       xp:            0,
       titles:        [],
       created_at:    new Date().toISOString(),
+      active_banner:  null,
+      avatar_url:    null,
     });
 
     const session = await getSession();
