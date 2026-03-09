@@ -1236,18 +1236,32 @@ async function refreshLeaderboard() {
 async function submitScore(runScore, peakCombo) {
     if (!loggedInUser || runScore <= 0) return;
     try {
+        // Submit score to leaderboard
         const res = await fetch('/api/leaderboard', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                score: runScore,
-                combo: peakCombo,
-            }),
+            body: JSON.stringify({ score: runScore, combo: peakCombo }),
         });
         const data = await res.json();
         if (data.ok) {
             await refreshLeaderboard();
+        }
+
+        // Award XP (score / 100)
+        const xpRes  = await fetch('/api/xp', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ score: runScore }),
+        });
+        const xpData = await xpRes.json();
+        if (xpData.ok) {
+            updateXpBar(xpData.xp, xpData.xpLevel, xpData.xpForNext);
+            const xpMsg = `+${xpData.earned} XP`;
+            if (xpData.leveledUp) {
+                showToast(`🎉 LEVEL UP! NOW LEVEL ${xpData.xpLevel} · ${xpMsg}`);
+            } else if (data.ok) {
+                showToast(`+${runScore.toLocaleString()} SAVED · ${xpMsg}`);
+            }
+        } else if (data.ok) {
             showToast(`+${runScore.toLocaleString()} SAVED · TOTAL: ${(data.newTotal || runScore).toLocaleString()}`);
-            console.log("Saving score succeeded:", data);
         }
     } catch (e) {
         console.warn('Score submit failed:', e.message);
@@ -1322,7 +1336,10 @@ function renderLeaderboard() {
             }) : '';
         const meta = [dateStr, entry.combo ? `x${entry.combo} COMBO` : ''].filter(Boolean).join('  ·  ');
         const barPct = Math.round(((entry.score || 0) / maxScore) * 100);
-        const titleHTML = getTitleBadgeHTML(entry);
+        const titleHTML    = getTitleBadgeHTML(entry);
+        const xpLevelHTML  = entry.xpLevel
+            ? `<span class="lb-xp-level">LVL ${entry.xpLevel}</span>`
+            : '';
 
         return `
       <div class="lb-row${rankClass}">
@@ -1331,6 +1348,7 @@ function renderLeaderboard() {
         <div class="lb-info">
           <div class="lb-name-row">
             <div class="lb-name">${name}</div>
+            ${xpLevelHTML}
             ${titleHTML}
           </div>
           ${meta ? `<div class="lb-meta">${meta}</div>` : ''}
@@ -1505,6 +1523,35 @@ async function logoutUser() {
 }
 
 // ── Title picker ────────────────────────────────────────────
+// ── XP helpers ──────────────────────────────────────────────
+const XP_PER_LEVEL = 20_000;
+
+function updateXpBar(xp, xpLevel, xpForNext) {
+    const levelXp    = (xpLevel - 1) * XP_PER_LEVEL;   // XP at start of current level
+    const progress   = xp - levelXp;                    // XP earned this level
+    const pct        = Math.min(100, Math.round((progress / XP_PER_LEVEL) * 100));
+
+    const fill = document.getElementById('xp-bar-fill');
+    const sub  = document.getElementById('xp-bar-sub');
+    const cur  = document.getElementById('xp-level-current');
+    const nxt  = document.getElementById('xp-level-next');
+    if (!fill) return;
+
+    fill.style.width = pct + '%';
+    if (sub)  sub.textContent  = `${progress.toLocaleString()} / ${XP_PER_LEVEL.toLocaleString()} XP`;
+    if (cur)  cur.textContent  = `LVL ${xpLevel}`;
+    if (nxt)  nxt.textContent  = `LVL ${xpLevel + 1}`;
+}
+
+async function loadXpBar() {
+    if (!loggedInUser) return;
+    try {
+        const res  = await fetch('/api/xp');
+        const data = await res.json();
+        if (!data.error) updateXpBar(data.xp, data.xpLevel, data.xpForNext);
+    } catch { /* ignore */ }
+}
+
 async function loadTitlePicker() {
     const wrap = document.getElementById('profile-titles-wrap');
     const activeEl = document.getElementById('profile-active-title');
@@ -1551,6 +1598,7 @@ async function loadTitlePicker() {
     // Build ship color picker every time profile opens
     await loadShipColor();
     buildShipColorPicker();
+    loadXpBar();
 }
 
 async function pickTitle(titleId) {
@@ -2324,9 +2372,9 @@ async function mmPoll() {
             mmLog('Queue expired. Try again.', 'warn');
             showToast('QUEUE EXPIRED — TRY AGAIN');
             mmReturnToMenu();
-        }
+        } 
     } catch { 
-        mmLog('Connection error while searching.', 'error');
+        mmLog('Connection error while polling. Still searching...', 'error');
     }
 }
 

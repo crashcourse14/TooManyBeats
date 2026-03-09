@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
       password_hash: await bcrypt.hash(password, 12),
       active_title:  null,
       ship_color:    'auto',
+      xp:            0,
       titles:        [],
       created_at:    new Date().toISOString(),
     });

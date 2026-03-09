@@ -19,22 +19,31 @@ import {
 export async function GET() {
   const entries = await readLeaderboard();
 
-  // Attach each player's active title
+  // Attach each player's active title + xp level
   const users    = await readUsers();
-  const titleMap = new Map(users.map(u => [u.username.toLowerCase(), u.active_title ?? null]));
+  const userMap  = new Map(users.map(u => [u.username.toLowerCase(), u]));
 
-  const withTitles: LeaderboardEntry[] = entries.map(e => ({
-    ...e,
-    title: titleMap.get((e.name ?? '').toLowerCase()) ?? null,
-  }));
+  const XP_PER_LEVEL = 20_000;
 
-  withTitles.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  const withMeta: LeaderboardEntry[] = entries.map(e => {
+    const u        = userMap.get((e.name ?? '').toLowerCase());
+    const xp       = u?.xp ?? 0;
+    const xpLevel  = Math.floor(xp / XP_PER_LEVEL) + 1;
+    return {
+      ...e,
+      title:    u?.active_title ?? null,
+      xpLevel,
+    };
+  });
 
-  return NextResponse.json(withTitles);
+  withMeta.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+
+  return NextResponse.json(withMeta);
 }
 
 // ── POST /api/leaderboard ──────────────────────────────────────
 export async function POST(req: NextRequest) {
+
   const session = await getSession();
   if (!session.user) {
     return NextResponse.json({ error: 'You must be logged in to submit a score.' }, { status: 401 });
@@ -49,7 +58,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Score must be a positive integer.' }, { status: 400 });
   }
 
-  const username       = session.user;
+  const username        = session.user;
   const existingEntries = await readLeaderboard();
 
   const existing = existingEntries.find(
@@ -70,4 +79,4 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json({ ok: true, newTotal });
-}                         
+}

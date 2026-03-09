@@ -16,6 +16,7 @@ export interface User {
   password_hash: string;
   active_title:  string | null;
   ship_color:    string | null | undefined;
+  xp:            number;
   titles:        string[];
   created_at:    string;
 }

@@ -651,6 +651,45 @@
   }
   #profile-logout-btn:hover { color: #ff6666; border-color: rgba(255,80,80,0.5); }
 
+  /* ── XP Progress Bar ── */
+  #xp-bar-wrap {
+    display: flex; flex-direction: column; gap: 6px; margin-bottom: 24px;
+  }
+  #xp-bar-labels {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .xp-level-label {
+    font-family: 'Orbitron', monospace; font-size: 11px; font-weight: 700;
+    letter-spacing: 2px; color: #00ffff;
+    text-shadow: 0 0 8px rgba(0,255,255,0.5);
+  }
+  #xp-bar-track {
+    width: 100%; height: 8px; border-radius: 4px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    overflow: hidden;
+  }
+  #xp-bar-fill {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, #0088ff, #00ffff);
+    box-shadow: 0 0 8px rgba(0,255,255,0.4);
+    transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+    width: 0%;
+  }
+  #xp-bar-sub {
+    font-family: 'Share Tech Mono', monospace; font-size: 9px;
+    letter-spacing: 1px; color: rgba(255,255,255,0.3);
+    text-align: center;
+  }
+
+  /* ── XP level badge in leaderboard ── */
+  .lb-xp-level {
+    font-family: 'Orbitron', monospace; font-size: 8px; font-weight: 700;
+    letter-spacing: 1px; padding: 2px 7px; border-radius: 4px;
+    background: rgba(0,180,255,0.12); border: 1px solid rgba(0,200,255,0.3);
+    color: #00cfff; white-space: nowrap; flex-shrink: 0;
+  }
+
   /* ── Ship customization ── */
   #ship-preview-wrap {
     display: flex; align-items: center; justify-content: center;
@@ -997,7 +1036,7 @@
         </div>
       </div>
       <div class="news-card-headline">Season 1 Is Live!</div>
-      <div class="news-card-body">Welcome to <strong>Season 1</strong> of Too Many Beats. Compete across 30+ levels, chase your best score, and climb the leaderboard. Top players will earn exclusive <strong>titles</strong> displayed on the leaderboard for all to see.</div>
+      <div class="news-card-body">Welcome to <strong>Season 1</strong> of Too Many Beats. Compete across 22+ levels, chase your best score, and climb the leaderboard. Top players will earn exclusive <strong>titles</strong> displayed on the leaderboard for all to see.</div>
     </div>
 
     <div class="news-card">
@@ -1088,7 +1127,7 @@
 
 <!-- Top nav bar (hidden — kept for JS compatibility) -->
 <div id="top-nav" style="display:none">
-  <button class="nav-btn active-tab" id="nav-btn-levels"      onclick="showTitleScreen('levels')">▤ LEVELS</button>
+  <button class="nav-btn active-tab" id="nav-btn-levels"      onclick="showTitleScreen('levels')">▤ PRACTICE</button>
   <button class="nav-btn"            id="nav-btn-leaderboard" onclick="showTitleScreen('leaderboard')">🏆 LEADERBOARD</button>
   <button class="nav-btn"            id="nav-btn-links"       onclick="showTitleScreen('links')">🔗 LINKS</button>
   <button class="nav-btn"            id="nav-btn-login"       onclick="showTitleScreen('login')">⚡ LOGIN</button>
@@ -1181,6 +1220,16 @@
         <div id="profile-username"></div>
         <div id="profile-user-sub">PLAYER PROFILE</div>
       </div>
+    </div>
+
+    <div class="profile-section-label">LEVEL PROGRESS</div>
+    <div id="xp-bar-wrap">
+      <div id="xp-bar-labels">
+        <span class="xp-level-label" id="xp-level-current">LVL 1</span>
+        <span class="xp-level-label" id="xp-level-next">LVL 2</span>
+      </div>
+      <div id="xp-bar-track"><div id="xp-bar-fill"></div></div>
+      <div id="xp-bar-sub">0 / 20,000 XP</div>
     </div>
 
     <div class="profile-section-label">ACTIVE TITLE</div>
