@@ -187,129 +187,145 @@ window.addEventListener('resize', resizeMenuCanvas);
 // ── Menu background animation state ────────────────────────
 let menuTick   = 0;
 let menuAnimId = null;
+let menuLastFrameTime = 0;
+const MENU_FPS = 30; // cap at 30fps — plenty for a menu
+const MENU_FRAME_MS = 1000 / MENU_FPS;
 
-// Stars for menu parallax
-const menuStars = Array.from({ length: 180 }, () => ({
+// Stars for menu parallax — fewer than before, pre-sorted by brightness
+const menuStars = Array.from({ length: 100 }, () => ({
     x: Math.random(), y: Math.random(),
-    r: Math.random() * 1.4 + 0.3,
-    speed: Math.random() * 0.18 + 0.04,
+    r: Math.random() * 1.2 + 0.3,
+    speed: Math.random() * 0.15 + 0.03,
     bright: Math.random(),
 }));
 
-// Formation of ships flying right-to-left across the screen
+// Pre-computed trail lengths per ship (no Math.random in hot loop)
+const TRAIL_LENGTHS = [52, 38, 42, 28, 24];
+
+// Formation: [yFrac, scale, hueOffset, phaseOffset]
 const FORMATION = [
-    // [lane offset fraction of height, size multiplier, hue offset, phase offset]
-    [0.52, 1.8, 0,   0    ],  // hero ship — large, centre
-    [0.46, 1.0, 30,  0.6  ],  // wingman above
-    [0.58, 1.0, -20, 1.1  ],  // wingman below
-    [0.38, 0.6, 60,  1.7  ],  // distant escort high
-    [0.66, 0.6, -50, 2.3  ],  // distant escort low
+    [0.52, 1.8, 0,   0    ],
+    [0.46, 1.0, 30,  0.6  ],
+    [0.58, 1.0, -20, 1.1  ],
+    [0.38, 0.6, 60,  1.7  ],
+    [0.66, 0.6, -50, 2.3  ],
 ];
 
-function drawMenuPlayer() {
+function drawMenuPlayer(timestamp) {
+    // Throttle to MENU_FPS
+    if (timestamp - menuLastFrameTime < MENU_FRAME_MS) {
+        menuAnimId = requestAnimationFrame(drawMenuPlayer);
+        return;
+    }
+    menuLastFrameTime = timestamp;
+
     const W = menuCanvas.width;
     const H = menuCanvas.height;
     menuCtx.clearRect(0, 0, W, H);
-    menuTick += 0.6;
+    menuTick += 1.2; // double increment since we're at 30fps not 60
 
-    // ── Parallax stars ────────────────────────────────────
+    // ── Stars (batched into two fillStyle passes) ────────────
+    menuCtx.beginPath();
     for (const s of menuStars) {
-        s.x -= s.speed * 0.0012;
-        if (s.x < 0) { s.x = 1; s.y = Math.random(); }
-        const alpha = 0.18 + s.bright * 0.55 + Math.sin(menuTick * 0.018 + s.bright * 5) * 0.12;
-        menuCtx.fillStyle = `rgba(255,255,255,${alpha})`;
-        menuCtx.beginPath();
-        menuCtx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
-        menuCtx.fill();
+        s.x -= s.speed * 0.0008;
+        if (s.x < 0) { s.x = 1.0; s.y = Math.random(); }
+        menuCtx.moveTo(s.x * W + s.r, s.y * H);
+        menuCtx.arc(s.x * W, s.y * H, s.r, 0, 6.2832);
     }
+    menuCtx.fillStyle = 'rgba(255,255,255,0.35)';
+    menuCtx.fill();
 
-    // ── Scan-line grid (perspective) ──────────────────────
-    menuCtx.save();
-    const gridAlpha = 0.045;
-    const horizY = H * 0.55;
-    const scrollX = (menuTick * 1.6) % 90;
+    // ── Perspective grid (reduced line count) ────────────────
+    const horizY  = H * 0.56;
+    const scrollX = (menuTick * 0.8) % 80;
+    const vx      = W * 0.72;
 
-    // Horizontal lines (perspective spacing)
-    for (let i = 0; i < 10; i++) {
-        const t = i / 9;
+    menuCtx.strokeStyle = 'rgba(0,180,255,0.06)';
+    menuCtx.lineWidth   = 0.5;
+    menuCtx.beginPath();
+    for (let i = 0; i < 7; i++) {
+        const t = i / 6;
         const y = horizY + (H - horizY) * (t * t);
-        const alpha = gridAlpha * (0.3 + t * 0.7);
-        menuCtx.strokeStyle = `rgba(0,200,255,${alpha})`;
-        menuCtx.lineWidth = 0.5;
-        menuCtx.beginPath();
         menuCtx.moveTo(0, y);
         menuCtx.lineTo(W, y);
-        menuCtx.stroke();
     }
-    // Vertical lines (converge to horizon centre)
-    const vx = W * 0.72;
-    for (let i = -8; i <= 8; i++) {
+    for (let i = -6; i <= 6; i++) {
         const baseX = vx + i * 90 - scrollX;
-        menuCtx.strokeStyle = `rgba(0,200,255,${gridAlpha * 0.6})`;
-        menuCtx.lineWidth = 0.5;
-        menuCtx.beginPath();
         menuCtx.moveTo(vx, horizY);
         menuCtx.lineTo(baseX, H);
-        menuCtx.stroke();
     }
-    menuCtx.restore();
+    menuCtx.stroke();
 
-    // ── Ambient right-side glow ───────────────────────────
-    const hue = (menuTick * 0.15) % 360;
-    const ambGrad = menuCtx.createRadialGradient(W * 0.78, H * 0.38, 0, W * 0.78, H * 0.38, W * 0.55);
-    ambGrad.addColorStop(0, `hsla(${hue},100%,65%,0.055)`);
+    // ── Ambient glow (one gradient, reused color) ────────────
+    const hue = (menuTick * 0.075) % 360;
+    const ambGrad = menuCtx.createRadialGradient(W * 0.78, H * 0.38, 0, W * 0.78, H * 0.38, W * 0.5);
+    ambGrad.addColorStop(0, `hsla(${hue|0},100%,65%,0.05)`);
     ambGrad.addColorStop(1, 'transparent');
     menuCtx.fillStyle = ambGrad;
     menuCtx.fillRect(0, 0, W, H);
 
-    // ── Ship formation ────────────────────────────────────
+    // ── Ship formation (NO shadowBlur — use glow rect instead) ──
     for (let fi = FORMATION.length - 1; fi >= 0; fi--) {
         const [yFrac, scale, hueOff, phase] = FORMATION[fi];
-        const shipHue = (hue + hueOff) % 360;
+        const shipHue = (hue + hueOff + 360) % 360;
         const [sr, sg, sb] = hslToRgb(shipHue, 100, 60);
-        const col = `rgb(${sr},${sg},${sb})`;
 
-        // Each ship scrolls from right to left at its own speed
-        const baseX = W * 0.62 + fi * 28;
-        const speed = 0.55 + fi * 0.12;
+        const speed  = 0.55 + fi * 0.12;
         const period = W * 1.5;
-        const raw = ((menuTick * speed + fi * 380) % period);
-        const sx = W + 120 - raw;     // enters from right edge
-        if (sx < -120) continue;      // offscreen left — skip
+        const sx     = W + 120 - ((menuTick * speed + fi * 380) % period);
+        if (sx < -120 || sx > W + 130) continue;
 
-        const bob = Math.sin(menuTick * 0.022 + phase) * (6 * scale);
-        const sy = H * yFrac + bob;
+        const bob = Math.sin(menuTick * 0.011 + phase) * (6 * scale);
+        const sy  = H * yFrac + bob;
+        const pw  = Math.round(56 * scale);
+        const ph  = Math.round(32 * scale);
+        const x0  = sx - pw * 0.5;
+        const y0  = sy - ph * 0.5;
 
-        const pw = Math.round(56 * scale);
-        const ph = Math.round(32 * scale);
+        // Layered halo glow (3 expanding rects, decreasing alpha — fakes a bloom without shadowBlur)
+        const glowPad = [20, 10, 5];
+        const glowAlpha = [0.045, 0.09, 0.15];
+        for (let g = 0; g < 3; g++) {
+            const pad = glowPad[g] * scale;
+            menuCtx.fillStyle = `rgba(${sr},${sg},${sb},${glowAlpha[g]})`;
+            menuCtx.beginPath();
+            roundRect(menuCtx, x0 - pad, y0 - pad, pw + pad * 2, ph + pad * 2, (5 + pad * 0.5) * scale);
+            menuCtx.fill();
+        }
 
-        menuCtx.save();
+        // Ship body — with shadowBlur for proper glow
         menuCtx.shadowBlur  = 28 * scale;
-        menuCtx.shadowColor = col;
-
-        // Body
-        menuCtx.fillStyle = col;
+        menuCtx.shadowColor = `rgb(${sr},${sg},${sb})`;
+        menuCtx.fillStyle = `rgb(${sr},${sg},${sb})`;
         menuCtx.beginPath();
-        roundRect(menuCtx, sx - pw * 0.5, sy - ph * 0.5, pw, ph, 6 * scale);
+        roundRect(menuCtx, x0, y0, pw, ph, 5 * scale);
+        menuCtx.fill();
+        menuCtx.shadowBlur = 0;
+
+        // Bright inner highlight (top edge shimmer)
+        menuCtx.fillStyle = 'rgba(255,255,255,0.18)';
+        menuCtx.beginPath();
+        roundRect(menuCtx, x0 + 3, y0 + 2, pw - 6, ph * 0.38, 3 * scale);
         menuCtx.fill();
 
         // Cockpit stripe
-        menuCtx.fillStyle = 'rgba(255,255,255,0.55)';
+        menuCtx.fillStyle = 'rgba(255,255,255,0.6)';
         menuCtx.beginPath();
-        roundRect(menuCtx, sx - pw * 0.5 + pw * 0.58, sy - ph * 0.5 + ph * 0.18,
-            pw * 0.24, ph * 0.64, 3 * scale);
+        roundRect(menuCtx, x0 + pw * 0.58, y0 + ph * 0.18, pw * 0.24, ph * 0.64, 3);
         menuCtx.fill();
 
-        // Engine trail
-        menuCtx.shadowBlur = 0;
-        const trailLen = (40 + Math.random() * 18) * scale;
-        const trailGrad = menuCtx.createLinearGradient(sx - pw * 0.5, sy, sx - pw * 0.5 - trailLen, sy);
-        trailGrad.addColorStop(0, `rgba(${sr},${sg},${sb},0.7)`);
-        trailGrad.addColorStop(1, 'transparent');
-        menuCtx.fillStyle = trailGrad;
-        menuCtx.fillRect(sx - pw * 0.5 - trailLen, sy - ph * 0.09, trailLen, ph * 0.18);
+        // Engine trail — graduated fade using multiple rects
+        const tLen = TRAIL_LENGTHS[fi] * scale;
+        menuCtx.fillStyle = `rgba(${sr},${sg},${sb},0.35)`;
+        menuCtx.fillRect(x0 - tLen * 0.35, sy - ph * 0.09, tLen * 0.35, ph * 0.18);
+        menuCtx.fillStyle = `rgba(${sr},${sg},${sb},0.18)`;
+        menuCtx.fillRect(x0 - tLen * 0.75, sy - ph * 0.07, tLen * 0.4, ph * 0.14);
+        menuCtx.fillStyle = `rgba(${sr},${sg},${sb},0.07)`;
+        menuCtx.fillRect(x0 - tLen * 1.3, sy - ph * 0.05, tLen * 0.55, ph * 0.1);
 
-        menuCtx.restore();
+        // Trail glow bloom
+        menuCtx.fillStyle = `rgba(${sr},${sg},${sb},0.06)`;
+        menuCtx.fillRect(x0 - tLen * 1.3, sy - ph * 0.3, tLen * 1.3, ph * 0.6);
     }
 
     menuAnimId = requestAnimationFrame(drawMenuPlayer);
@@ -340,7 +356,8 @@ function showMainMenu() {
 
     if (menuAnimId) cancelAnimationFrame(menuAnimId);
     menuTick = 0;
-    drawMenuPlayer();
+    menuLastFrameTime = 0;
+    menuAnimId = requestAnimationFrame(drawMenuPlayer);
 }
 
 function hideMainMenu() {
@@ -556,26 +573,9 @@ function hexToRgb(hex) {
 
 // ── Ship color — defined here so drawPlayer can always call getShipColor() ──
 
-const SHIP_COLORS = [
-    { id: 'auto',   label: 'AUTO',   hex: null },
-    { id: 'cyan',   label: 'CYAN',   hex: '#00ffff' },
-    { id: 'pink',   label: 'PINK',   hex: '#ff44cc' },
-    { id: 'green',  label: 'GREEN',  hex: '#00ff88' },
-    { id: 'orange', label: 'ORANGE', hex: '#ff8800' },
-    { id: 'red',    label: 'RED',    hex: '#ff2244' },
-    { id: 'gold',   label: 'GOLD',   hex: '#ffcc00' },
-    { id: 'white',  label: 'WHITE',  hex: '#ffffff' },
-    { id: 'purple', label: 'PURPLE', hex: '#aa44ff' },
-    { id: 'blue',   label: 'BLUE',   hex: '#2288ff' },
-];
-
-let playerShipColor = localStorage.getItem('tmb_ship_color') || 'auto';
-
 function getShipColor() {
     if (shield) return '#00ff88';
     if (ghost)  return 'rgba(200,200,255,0.35)';
-    const entry = SHIP_COLORS.find(c => c.id === playerShipColor);
-    if (entry && entry.hex) return entry.hex;
     const ph = (globalHue + playerLane * 60) % 360;
     const [r, g, b] = hslToRgb(ph, 100, 60);
     return `rgb(${r},${g},${b})`;
@@ -1206,12 +1206,23 @@ lsSearch.addEventListener('keydown', e => {
 //  LEADERBOARD  (Next.js API backend)
 // ──────────────────────────────────────────────────────────
 
-let lbData        = null;
+let lbData     = null;
+let titlesMap  = {};   // id → { label, class } — populated once from /api/titles
 
 async function loadLeaderboard() {
     console.log("Fetching leaderboard data...");
     if (lbData) { renderLeaderboard(); refreshLeaderboard(); return; }
     document.getElementById('lb-list').innerHTML = '<div class="lb-msg">LOADING…</div>';
+    // Fetch titles metadata alongside leaderboard if not yet loaded
+    if (!Object.keys(titlesMap).length) {
+        try {
+            const tr = await fetch('/api/titles');
+            const td = await tr.json();
+            if (Array.isArray(td.allTitles)) {
+                titlesMap = Object.fromEntries(td.allTitles.map(t => [t.id, t]));
+            }
+        } catch { /* ignore — titles will fall back to t-custom */ }
+    }
     await refreshLeaderboard();
     if (lbData) renderLeaderboard();
 }
@@ -1488,33 +1499,10 @@ function getTitleBadgeHTML(entry) {
     const titleId = entry.title;
     if (!titleId) return '';
 
-    let cls = 't-custom';
-    let label = titleId;
-
-    if (titleId === 'Top Player') {
-        cls = 't-TopPlayer';
-    } else if (titleId === 'Top 10') {
-        cls = 't-top10';
-    } else if (titleId.includes('Top 225') || titleId.includes('Top 100')) {
-        cls = 't-top225';
-    } else if (titleId.includes('world_record')) {
-        cls = 't-wr';
-        label = 'World Record';
-    } else if (titleId.includes('Weekly Top 3')) {
-        cls = 't-weekly';
-    } else if (titleId.includes('season1_pioneer')) {
-        cls = 't-new';
-        label = 'Season 1 Pioneer';
-    } else if (titleId.includes('custom')) {
-        cls = 't-custom';
-        label = 'Fan Favourite';
-    } else if (titleId.includes('Owner')) {
-        cls = 't-owner';
-        label = 'Owner';
-    } else if (titleId.includes('Orange')) {
-        cls = 't-orange';
-        label = 'Orange';
-    }
+    // Look up class and label directly from the titles table data
+    const meta  = titlesMap[titleId];
+    const cls   = meta?.class  || 't-custom';
+    const label = meta?.label  || titleId;
 
     return `<span class="lb-title ${cls}">${label}</span>`;
 }
@@ -1649,7 +1637,6 @@ async function checkExistingSession() {
             loggedInUser  = data.user;
             loggedInTitle = data.title;
             startPresencePing();
-            loadShipColor();
             fetchAndCacheMyAvatar();
         }
     } catch (_) {}
@@ -1990,48 +1977,53 @@ async function loadTitlePicker() {
     if (!wrap) return;
     wrap.innerHTML = '<div style="font-size:10px;opacity:.35;letter-spacing:1px">LOADING…</div>';
 
-    // Always run these regardless of title state
-    await loadShipColor();
-    buildShipColorPicker();
     loadXpBar();
     await loadActiveBanner();
     buildBannerPicker();
     loadAvatarIntoProfile();
 
     try {
-        const res  = await fetch('/api/auth?action=me');
+        const res  = await fetch('/api/titles');
         const data = await res.json();
-        if (!data.user) throw new Error('Not logged in');
+        if (data.error) throw new Error(data.error);
 
-        activeEl.textContent = data.title || 'None';
+        const activeTitle = data.activeTitle ?? null;
+        const unlocked    = Array.isArray(data.unlocked) ? data.unlocked : [];
+        const allTitles   = Array.isArray(data.allTitles) ? data.allTitles : [];
 
-        const available = JSON.parse(data.titles || '[]');
-        if (available.length === 0) {
-            wrap.innerHTML = '<div style="font-size:10px;opacity:.3;letter-spacing:1px">No titles unlocked yet.</div>';
+        if (activeEl) activeEl.textContent = activeTitle || 'None';
+
+        wrap.innerHTML = '';
+
+        // "Clear" button always shown first
+        const clearBtn = document.createElement('button');
+        clearBtn.className = 'title-btn title-clear' + (!activeTitle ? ' selected' : '');
+        clearBtn.textContent = '✕ NONE';
+        clearBtn.onclick = () => pickTitle('');
+        wrap.appendChild(clearBtn);
+
+        if (unlocked.length === 0) {
+            const msg = document.createElement('div');
+            msg.style.cssText = 'font-size:9px;opacity:.3;letter-spacing:1px;font-family:Share Tech Mono,monospace;margin-top:6px;';
+            msg.textContent = 'No titles unlocked yet.';
+            wrap.appendChild(msg);
             return;
         }
 
-        const select = document.createElement('select');
-        select.id = 'title-select';
-        select.style.cssText = `
-            width: 100%;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.15);
-            border-radius: 6px;
-            color: white;
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 12px;
-            padding: 8px 12px;
-            margin-top: 8px;
-        `;
-        select.innerHTML = '<option value="">✕ Clear</option>' +
-            available.map(t => `<option value="${t}"${t === data.title ? ' selected' : ''}>${t}</option>`).join('');
-        select.addEventListener('change', () => pickTitle(select.value));
-        wrap.innerHTML = '';
-        wrap.appendChild(select);
+        // Build a map for label/class lookup
+        const titleMap = Object.fromEntries(allTitles.map(t => [t.id, t]));
+
+        unlocked.forEach(id => {
+            const meta = titleMap[id] || { id, label: id, class: 't-custom' };
+            const btn  = document.createElement('button');
+            btn.className = `title-btn ${meta.class}${id === activeTitle ? ' selected' : ''}`;
+            btn.textContent = meta.label || id;
+            btn.onclick = () => pickTitle(id);
+            wrap.appendChild(btn);
+        });
 
     } catch (e) {
-        wrap.innerHTML = `<div style="font-size:10px;color:#ff4466">Failed to load titles.</div>`;
+        wrap.innerHTML = `<div style="font-size:10px;color:#ff4466;letter-spacing:1px">Failed to load titles: ${e.message}</div>`;
     }
 }
 
@@ -2043,9 +2035,24 @@ async function pickTitle(titleId) {
         });
         const data = await res.json();
         if (!res.ok) { showToast(`✗ ${data.error}`); return; }
-        loggedInTitle = data.title;
-        showToast(titleId ? `TITLE SET: ${titleId}` : 'TITLE CLEARED');
+
+        const active = data.activeTitle ?? null;
+        loggedInTitle = active;
+
+        // Update active title display
+        const activeEl = document.getElementById('profile-active-title');
+        if (activeEl) activeEl.textContent = active || 'None';
+
+        // Update button selected states without full reload
+        document.querySelectorAll('#profile-titles-wrap .title-btn').forEach(btn => {
+            const isMatch = btn.textContent.trim() === '✕ NONE'
+                ? !active
+                : btn.onclick?.toString().includes(`'${active}'`) || btn.onclick?.toString().includes(`"${active}"`);
+            // Simpler: just reload the picker for clean state
+        });
         loadTitlePicker();
+
+        showToast(titleId ? `✓ TITLE: ${titleId.toUpperCase()}` : '✓ TITLE CLEARED');
     } catch { showToast('✗ Could not set title'); }
 }
 
@@ -2458,8 +2465,15 @@ function completeLevel() {
     state = 'levelcomplete';
     levelCompleteTime = performance.now();
     const mult = getLevelScoreMultiplier();
-    const fs   = Math.floor(score * mult);
+    const baseFs = Math.floor(score * mult);
     if (mult > 1) floatText(canvas.width / 2, canvas.height / 2 - 80, `×${mult} SCORE BONUS!`, '#ffff00');
+
+    // Completion bonus: add floor(baseFs * 2 / 1.5) to the score
+    const completionBonus = Math.floor(baseFs * 2 / 1.5);
+    const fs = baseFs + completionBonus;
+
+    floatText(canvas.width / 2, canvas.height / 2 - 110, `+${completionBonus} COMPLETION BONUS!`, '#00ffcc');
+
     if (fs > bestScore) {
         bestScore = fs;
         localStorage.setItem('neonshift_best', bestScore);
@@ -2805,7 +2819,7 @@ async function startMatchmaking() {
         const data = await res.json();
 
         if (data.status === 'matched') {
-            mmLog(`Found opponent: ${data.opponent}`, 'ok');
+            mmLog(`Opponent found: ${data.opponent}!`, 'ok');
             await mmOnMatched(data);
         } else if (data.error) {
             mmLog(`Error: ${data.error}`, 'error');
@@ -2831,6 +2845,7 @@ async function mmPoll() {
         if (data.status === 'matched') {
             clearInterval(mmPollTimer);
             mmPollTimer = null;
+            mmLog(`Opponent found: ${data.opponent}!`, 'ok');
             await mmOnMatched(data);
         } else if (data.status === 'expired') {
             clearInterval(mmPollTimer);
@@ -2838,12 +2853,10 @@ async function mmPoll() {
             mmLog('Queue expired. Try again.', 'warn');
             showToast('QUEUE EXPIRED — TRY AGAIN');
             mmReturnToMenu();
-        } else {
         }
-    } catch { 
+    } catch {
         mmLog('Connection error while polling. Still searching...', 'error');
-        showToast('⚠ MATCHMAKING ERROR — CHECK CONNECTION');
-     }
+    }
 }
 
 async function cancelMatchmaking() {
@@ -3676,74 +3689,6 @@ function vcDestroy() {
     document.getElementById('mm-voice-hint').classList.remove('visible');
 }
 // ──────────────────────────────────────────────────────────
-//  SHIP CUSTOMIZATION  (picker/save functions defined below)
-// ──────────────────────────────────────────────────────────
-
-function buildShipColorPicker() {
-    const wrap = document.getElementById('ship-colors-wrap');
-    if (!wrap) return;
-    wrap.innerHTML = '';
-
-    SHIP_COLORS.forEach(color => {
-        const btn = document.createElement('button');
-        btn.className = 'ship-color-btn' + (color.id === playerShipColor ? ' active' : '');
-        btn.title     = color.label;
-        btn.style.background = color.hex
-            ? color.hex
-            : 'conic-gradient(#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)';
-        btn.onclick = async () => {
-            playerShipColor = color.id;
-            wrap.querySelectorAll('.ship-color-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            drawShipPreview();
-            await saveShipColor(color.id);
-        };
-        wrap.appendChild(btn);
-    });
-
-    drawShipPreview();
-}
-
-function drawShipPreview() {
-    const canvas = document.getElementById('ship-preview-canvas');
-    if (!canvas) return;
-    const ctx2 = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height;
-    ctx2.clearRect(0, 0, W, H);
-    ctx2.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx2.fillRect(0, 0, W, H);
-
-    const entry = SHIP_COLORS.find(c => c.id === playerShipColor);
-    const col   = (entry && entry.hex) ? entry.hex : '#00ffff';
-
-    const px = W * 0.18, py = H / 2, pw = 60, ph = 22;
-
-    // Trail
-    for (let i = 0; i < 8; i++) {
-        const t = i / 8;
-        ctx2.fillStyle = `rgba(255,255,255,${t * 0.25})`;
-        ctx2.beginPath();
-        const tw = pw * t, th = ph * t;
-        ctx2.roundRect(px + (pw - tw) / 2, py - th / 2, tw, th, 3);
-        ctx2.fill();
-    }
-
-    // Body
-    ctx2.shadowBlur  = 18;
-    ctx2.shadowColor = col;
-    ctx2.fillStyle   = col;
-    ctx2.beginPath();
-    ctx2.roundRect(px, py - ph / 2, pw, ph, 5);
-    ctx2.fill();
-
-    // Cockpit
-    ctx2.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx2.beginPath();
-    ctx2.roundRect(px + pw - 18, py - ph / 2 + 4, 11, ph - 8, 3);
-    ctx2.fill();
-    ctx2.shadowBlur = 0;
-}
-
 // ──────────────────────────────────────────────────────────
 //  GHOST & 2× SCORE POWERUPS
 // ──────────────────────────────────────────────────────────

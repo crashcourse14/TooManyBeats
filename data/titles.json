@@ -1,5 +1,5 @@
 [
-  { "id": "TopPlayer",       "label": "Season 1 Top Player", "class": "t-TopPlayer" },
+  { "id": "TopPlayer",       "label": "Season 1 Top Player", "class": "t-topplayer" },
   { "id": "top10",           "label": "Top 10",             "class": "t-top10"     },
   { "id": "top225",          "label": "Top 225",            "class": "t-top225"    },
   { "id": "season1_pioneer", "label": "Season 1 Pioneer",   "class": "t-new"       },

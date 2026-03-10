@@ -518,28 +518,21 @@
     text-transform: uppercase; border: 1px solid;
     line-height: 1.6;
   }
-  /* World Record — bright white with white glow */
-  .lb-title.t-TopPlayer {
+  /* World Record */
+  .lb-title.t-TopPlayer, .lb-title.t-wr {
     color: #ffffff;
     background: rgba(255,255,255,0.1);
     border-color: rgba(255,255,255,0.45);
     text-shadow: 0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(255,255,255,0.4);
     box-shadow: 0 0 10px rgba(255,255,255,0.12);
   }
-
+  /* Owner / Developer */
   .lb-title.t-owner {
     color: rgb(239, 111, 208);
     background: rgba(255,255,255,0.1);
     border-color: rgba(239, 111, 208, 0.45);
     text-shadow: 0 0 10px rgba(239, 111, 208, 0.9), 0 0 20px rgba(255,255,255,0.4);
     box-shadow: 0 0 10px rgba(239, 111, 208, 0.12);
-  }
-  .lb-title.t-weekly {
-    color: orange;
-    background: rgba(255,165,0,0.1);
-    border-color: rgba(255,165,0,0.45);
-    text-shadow: 0 0 10px rgba(255,165,0,0.9), 0 0 20px rgba(255,255,255,0.4);
-    box-shadow: 0 0 10px rgba(255,165,0,0.12);
   }
   /* Top 10 — deep crimson red */
   .lb-title.t-top10 {
@@ -557,7 +550,14 @@
     text-shadow: 0 0 8px rgba(230,190,0,0.65);
     box-shadow: 0 0 8px rgba(180,140,0,0.22);
   }
-  /* Generic fallback for any other custom title */
+  .lb-title.t-weekly {
+    color: orange;
+    background: rgba(255,165,0,0.1);
+    border-color: rgba(255,165,0,0.45);
+    text-shadow: 0 0 10px rgba(255,165,0,0.9), 0 0 20px rgba(255,255,255,0.4);
+    box-shadow: 0 0 10px rgba(255,165,0,0.12);
+  }
+  /* Generic fallback */
   .lb-title.t-custom {
     color: rgba(200,200,255,0.85);
     background: rgba(120,120,255,0.08);
@@ -834,16 +834,17 @@
   .title-btn:hover { filter: brightness(1.35); transform: scale(1.04); }
   .title-btn.selected { transform: scale(1.06); }
   .title-btn.title-clear { color: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.1); }
-  /* colour variants */
-  .title-btn.t-wr     { color: #ffffff; border-color: rgba(255,255,255,0.45); }
+  /* colour variants — must match class values in the titles table exactly */
+  .title-btn.t-TopPlayer, .title-btn.t-wr { color: #ffffff; border-color: rgba(255,255,255,0.45); }
+  .title-btn.t-owner  { color: rgb(239,111,208); border-color: rgba(239,111,208,0.5); }
   .title-btn.t-top10  { color: #ff4444; border-color: rgba(200,30,30,0.5); }
   .title-btn.t-top225 { color: #f5c842; border-color: rgba(200,160,10,0.5); }
-  .title-btn.t-new    { color: #44ff88; border-color: rgba(68,255,136,0.4); }
+  .title.btn.t-weekly { color: #44ff88; border-color: rgba(68,255,136,0.4); }
   .title-btn.t-custom { color: rgba(190,190,255,0.9); border-color: rgba(150,150,255,0.28); }
-  .title-btn.selected.t-wr     { background: rgba(255,255,255,0.08); }
+  .title-btn.selected.t-TopPlayer, .title-btn.selected.t-wr { background: rgba(255,255,255,0.08); }
+  .title-btn.selected.t-owner  { background: rgba(239,111,208,0.12); }
   .title-btn.selected.t-top10  { background: rgba(160,10,10,0.2); }
   .title-btn.selected.t-top225 { background: rgba(150,110,0,0.2); }
-  .title-btn.selected.t-new    { background: rgba(68,255,136,0.1); }
   .title-btn.selected.t-custom { background: rgba(120,120,255,0.08); }
 
   #profile-logout-btn {
@@ -1909,13 +1910,6 @@
       </div>
     </div>
 
-    <div class="profile-section-wrap">
-      <div class="profile-section-label">SHIP COLOR</div>
-      <div id="ship-preview-wrap">
-        <canvas id="ship-preview-canvas" width="120" height="48"></canvas>
-      </div>
-      <div id="ship-colors-wrap"></div>
-    </div>
 
     <div class="profile-section-wrap">
       <div class="profile-section-label">CARD BANNER</div>
