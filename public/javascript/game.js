@@ -3274,7 +3274,7 @@ function mmCountdown() {
             count--;
             if (count <= 0) {
                 clearInterval(tick);
-                el.textContent = 'GO!';
+                el.textContent = 'Starting Match...';
                 setTimeout(resolve, 600);
             } else {
                 el.textContent = count;
