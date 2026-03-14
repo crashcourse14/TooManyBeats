@@ -1,0 +1,15 @@
+{
+  "name": "MAYHEM - THIRST",
+  "song": "audio/MAYHEM - THIRST.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 20,
+  "spawnRate": 80,
+  "speedRampRate": 0.0005,
+  "numLanes": 2,
+  "laneTheme": "dark",
+  "beatDrop": 29.5,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": 1.6,
+  "levelDuration": 346
+}

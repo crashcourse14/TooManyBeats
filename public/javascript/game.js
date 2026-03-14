@@ -74,6 +74,8 @@ let currentLevelIndex = 0;
 // ──────────────────────────────────────────────────────────
 const SCORE_MULTIPLIERS = [
     { level: 'Battle Against a True Hero - Falkkone', multiplier: 2 },
+    { level: 'MAYHEM -  THIRST', multiplier: 3.5 },
+    { level: 'ALLDAWAY -  THIRST', multiplier: 3.5 }
 ];
 
 /**
@@ -674,6 +676,10 @@ function drawBackground() {
     if (theme === 'ice') {
         c1 = '#000a0f';
         c2 = '#000515';
+    }
+    if (theme === 'dark') {
+        c1 = '#111';
+        c2 = '#333';
     }
     const bg = ctx.createLinearGradient(0, 0, 0, canvas.height);
     bg.addColorStop(0, c1);

@@ -1,0 +1,15 @@
+{
+  "name": "ALLDAWAY - THIRST",
+  "song": "audio/ALLDAWAY - THIRST.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 20,
+  "spawnRate": 100,
+  "speedRampRate": 0.0005,
+  "numLanes": 3,
+  "laneTheme": "dark",
+  "beatDrop": 16,
+  "beatCalms": 111,
+  "BeatDropTimeMultiplyer": 1.6,
+  "levelDuration": 126
+}

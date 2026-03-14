@@ -1,0 +1,15 @@
+{
+  "name": "Death -   Glamour",
+  "song": "audio/Death -   Glamour.mp3",
+  "color": "#00ffff",
+  "bpm": 140,
+  "obstacleSpeed": 16,
+  "spawnRate": 80,
+  "speedRampRate": 0.0004,
+  "numLanes": 2,
+  "laneTheme": "ice",
+  "beatDrop": null,
+  "beatCalms": null,
+  "BeatDropTimeMultiplyer": null,
+  "levelDuration": 346
+}
